@@ -122,28 +122,27 @@ export function MediaCarousel({
   return (
     <div className={cn("relative overflow-hidden rounded-xl bg-black", className)}>
       {/* Media Content */}
-      <div className="relative w-full h-full">
+      <div className="relative w-full h-full flex items-center justify-center bg-black">
         {currentItem.type === 'image' ? (
           <img
             key={currentIndex}
             src={currentItem.src}
             alt={currentItem.alt || 'Slide'}
-            className="w-full h-full object-cover animate-fade-in"
+            className="w-full h-full object-contain animate-fade-in"
           />
         ) : currentItem.type === 'external' ? (
           <iframe
             key={currentIndex}
             src={getEmbedUrl(currentItem.src)}
-            className="w-full h-full animate-fade-in"
+            className="w-full h-full animate-fade-in border-0"
             allow="autoplay; encrypted-media"
             allowFullScreen
-            frameBorder="0"
           />
         ) : (
           <video
             key={currentIndex}
             src={currentItem.src}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             autoPlay
             muted
             playsInline
