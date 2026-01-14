@@ -8,6 +8,7 @@ import Totem from "./pages/Totem";
 import Painel from "./pages/Painel";
 import Secretaria from "./pages/Secretaria";
 import Historico from "./pages/Historico";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/painel" element={<Painel />} />
           <Route path="/secretaria" element={<Secretaria />} />
           <Route path="/historico" element={<Historico />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

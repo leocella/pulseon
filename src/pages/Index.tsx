@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { 
-  Ticket, 
-  Monitor, 
-  UserCog, 
+import {
+  Ticket,
+  Monitor,
+  UserCog,
   History,
+  Settings,
   ArrowRight
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -37,6 +38,13 @@ const screens = [
     icon: History,
     path: '/historico',
     color: 'bg-preferencial',
+  },
+  {
+    title: 'Admin',
+    description: 'Gerenciar mídias do painel',
+    icon: Settings,
+    path: '/admin',
+    color: 'bg-normal',
   },
 ];
 

@@ -123,20 +123,24 @@ export default function Totem() {
 
       {/* Success State */}
       {(state === 'success' || state === 'print_error') && generatedTicket && (
-        <Card className="p-12 text-center max-w-lg w-full animate-slide-up">
-          <CheckCircle className="w-16 h-16 mx-auto text-preferencial mb-6" />
-          <p className="text-xl text-muted-foreground mb-4">Sua senha é</p>
-          <TicketNumber 
-            number={generatedTicket.id_senha} 
-            size="3xl" 
-            className="text-foreground block mb-6"
-          />
-          <TicketBadge tipo={generatedTicket.tipo} size="xl" />
-          <p className="text-lg text-muted-foreground mt-6">
+        <Card className="p-8 md:p-12 text-center max-w-lg w-full animate-slide-up">
+          <CheckCircle className="w-16 h-16 mx-auto text-preferencial mb-8" />
+          <p className="text-xl md:text-2xl text-muted-foreground mb-6">Sua senha é</p>
+          <div className="my-8 py-4">
+            <TicketNumber 
+              number={generatedTicket.id_senha} 
+              size="3xl" 
+              className="text-foreground block"
+            />
+          </div>
+          <div className="mb-8">
+            <TicketBadge tipo={generatedTicket.tipo} size="xl" />
+          </div>
+          <p className="text-lg md:text-xl text-muted-foreground mt-6">
             Aguarde ser chamado no painel
           </p>
           {state === 'print_error' && (
-            <p className="text-sm text-destructive mt-4 flex items-center justify-center gap-2">
+            <p className="text-sm text-destructive mt-6 flex items-center justify-center gap-2">
               <AlertCircle className="w-4 h-4" />
               Falha na impressão. Anote sua senha.
             </p>

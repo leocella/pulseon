@@ -1,9 +1,7 @@
 import type { MediaItem } from '@/components/MediaCarousel';
 
-// Configure your media items here
-// You can add images and videos from your assets or external URLs
-export const panelMediaItems: MediaItem[] = [
-  // Example images - replace with your own
+// Default fallback media items (used when no media is configured in database)
+export const defaultPanelMediaItems: MediaItem[] = [
   {
     type: 'image',
     src: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&q=80',
@@ -22,10 +20,8 @@ export const panelMediaItems: MediaItem[] = [
     alt: 'Equipe de saúde',
     duration: 8,
   },
-  // Example video - uncomment and add your video URL
-  // {
-  //   type: 'video',
-  //   src: '/videos/promotional.mp4',
-  //   alt: 'Vídeo promocional',
-  // },
 ];
+
+// This is now deprecated - use usePanelMedia hook to fetch from database
+// Kept for backward compatibility
+export const panelMediaItems = defaultPanelMediaItems;
