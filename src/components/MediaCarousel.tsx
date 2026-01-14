@@ -42,6 +42,13 @@ export function MediaCarousel({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
+  // Reset index if it's out of bounds when items change
+  useEffect(() => {
+    if (items.length > 0 && currentIndex >= items.length) {
+      setCurrentIndex(0);
+    }
+  }, [items.length, currentIndex]);
+
   const goToNext = useCallback(() => {
     if (items.length === 0) return;
     setCurrentIndex((prev) => (prev + 1) % items.length);
@@ -70,6 +77,7 @@ export function MediaCarousel({
     return () => clearTimeout(timer);
   }, [currentIndex, items, autoPlay, goToNext, isVideoPlaying]);
 
+  // Early return if no items
   if (items.length === 0) {
     return (
       <div className={cn(
@@ -84,7 +92,23 @@ export function MediaCarousel({
     );
   }
 
-  const currentItem = items[currentIndex];
+  // Safe access to current item
+  const currentItem = items[currentIndex] || items[0];
+  
+  // If still no item, show empty state
+  if (!currentItem) {
+    return (
+      <div className={cn(
+        "flex items-center justify-center bg-muted/30 rounded-xl",
+        className
+      )}>
+        <div className="text-center text-muted-foreground p-8">
+          <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p>Nenhuma mídia configurada</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("relative overflow-hidden rounded-xl bg-black", className)}>
