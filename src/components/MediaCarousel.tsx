@@ -3,10 +3,27 @@ import { ChevronLeft, ChevronRight, Image as ImageIcon, Play } from 'lucide-reac
 import { cn } from '@/lib/utils';
 
 export interface MediaItem {
-  type: 'image' | 'video';
+  type: 'image' | 'video' | 'external';
   src: string;
   alt?: string;
-  duration?: number; // Duration in seconds for images (default 8s)
+  duration?: number; // Duration in seconds for images/external (default 8s)
+}
+
+// Helper to convert YouTube/Vimeo URLs to embed format
+function getEmbedUrl(url: string): string {
+  // YouTube
+  const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeMatch[1]}`;
+  }
+  
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&background=1`;
+  }
+  
+  return url;
 }
 
 interface MediaCarouselProps {
@@ -44,7 +61,7 @@ export function MediaCarousel({
     const currentItem = items[currentIndex];
     if (!currentItem) return;
 
-    // For videos, wait until they finish
+    // For native videos, wait until they finish (external videos use duration timer)
     if (currentItem.type === 'video' && isVideoPlaying) return;
 
     const duration = (currentItem.duration || 8) * 1000;
@@ -80,6 +97,15 @@ export function MediaCarousel({
             alt={currentItem.alt || 'Slide'}
             className="w-full h-full object-cover animate-fade-in"
           />
+        ) : currentItem.type === 'external' ? (
+          <iframe
+            key={currentIndex}
+            src={getEmbedUrl(currentItem.src)}
+            className="w-full h-full animate-fade-in"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            frameBorder="0"
+          />
         ) : (
           <video
             key={currentIndex}
@@ -98,7 +124,7 @@ export function MediaCarousel({
       </div>
 
       {/* Video indicator */}
-      {currentItem.type === 'video' && (
+      {(currentItem.type === 'video' || currentItem.type === 'external') && (
         <div className="absolute top-4 right-4 bg-black/50 rounded-full p-2">
           <Play className="w-4 h-4 text-white" />
         </div>
