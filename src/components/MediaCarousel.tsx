@@ -11,18 +11,27 @@ export interface MediaItem {
 
 // Helper to convert YouTube/Vimeo URLs to embed format
 function getEmbedUrl(url: string): string {
-  // YouTube
-  const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  // YouTube - aceita vários formatos
+  // https://www.youtube.com/watch?v=VIDEO_ID
+  // https://youtu.be/VIDEO_ID
+  // https://www.youtube.com/embed/VIDEO_ID
+  // https://www.youtube.com/v/VIDEO_ID
+  // https://m.youtube.com/watch?v=VIDEO_ID
+  const youtubeRegex = /(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/;
+  const youtubeMatch = url.match(youtubeRegex);
+
   if (youtubeMatch) {
-    return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeMatch[1]}`;
+    const videoId = youtubeMatch[1];
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1`;
   }
-  
+
   // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) {
     return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&background=1`;
   }
-  
+
+  // Se não for YouTube nem Vimeo, retorna a URL original
   return url;
 }
 
@@ -33,11 +42,11 @@ interface MediaCarouselProps {
   className?: string;
 }
 
-export function MediaCarousel({ 
-  items, 
-  autoPlay = true, 
+export function MediaCarousel({
+  items,
+  autoPlay = true,
   showControls = false,
-  className 
+  className
 }: MediaCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -64,7 +73,7 @@ export function MediaCarousel({
   // Auto-advance for images
   useEffect(() => {
     if (!autoPlay || items.length <= 1) return;
-    
+
     const currentItem = items[currentIndex];
     if (!currentItem) return;
 
@@ -94,7 +103,7 @@ export function MediaCarousel({
 
   // Safe access to current item
   const currentItem = items[currentIndex] || items[0];
-  
+
   // If still no item, show empty state
   if (!currentItem) {
     return (
@@ -183,8 +192,8 @@ export function MediaCarousel({
               onClick={() => setCurrentIndex(index)}
               className={cn(
                 "w-2 h-2 rounded-full transition-all",
-                index === currentIndex 
-                  ? "bg-white w-6" 
+                index === currentIndex
+                  ? "bg-white w-6"
                   : "bg-white/50 hover:bg-white/70"
               )}
               aria-label={`Ir para slide ${index + 1}`}
@@ -196,9 +205,9 @@ export function MediaCarousel({
       {/* Progress bar for images */}
       {currentItem.type === 'image' && autoPlay && items.length > 1 && (
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
-          <div 
+          <div
             className="h-full bg-white/80 animate-progress"
-            style={{ 
+            style={{
               animationDuration: `${currentItem.duration || 8}s`,
             }}
           />
