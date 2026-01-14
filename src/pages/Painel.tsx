@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Monitor, Clock, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Monitor, Clock, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useCurrentTicket, useWaitingTickets } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePanelMedia } from '@/hooks/usePanelMedia';
-import { UNIDADE } from '@/lib/config';
+import { useAlertSound } from '@/hooks/useAlertSound';
 import { TicketNumber } from '@/components/TicketNumber';
 import { TicketBadge } from '@/components/TicketBadge';
 import { MediaCarousel } from '@/components/MediaCarousel';
@@ -16,12 +17,43 @@ import type { MediaItem } from '@/components/MediaCarousel';
 
 export default function Painel() {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const lastTicketIdRef = useRef<string | null>(null);
+  
   const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket();
   const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(3);
   const { data: dbMediaItems = [] } = usePanelMedia();
+  const { playAlertSound, initAudioContext } = useAlertSound();
 
   // Enable realtime updates
   useRealtimeQueue();
+
+  // Handle user interaction to enable audio
+  const handleEnableSound = useCallback(() => {
+    initAudioContext();
+    setHasUserInteracted(true);
+    // Play a test sound to confirm it works
+    playAlertSound();
+  }, [initAudioContext, playAlertSound]);
+
+  // Play alert sound when a new ticket is called
+  useEffect(() => {
+    if (!currentTicket) {
+      lastTicketIdRef.current = null;
+      return;
+    }
+
+    // Check if this is a new ticket being called
+    const isNewTicket = currentTicket.id !== lastTicketIdRef.current;
+    const isBeingCalled = currentTicket.status === 'chamado';
+
+    if (isNewTicket && isBeingCalled && soundEnabled && hasUserInteracted) {
+      playAlertSound();
+    }
+
+    lastTicketIdRef.current = currentTicket.id;
+  }, [currentTicket, soundEnabled, hasUserInteracted, playAlertSound]);
 
   // Convert database media items to MediaItem format
   const mediaItems: MediaItem[] = dbMediaItems.length > 0
@@ -60,8 +92,35 @@ export default function Painel() {
           </div>
         </div>
 
-        {/* Clima e Relógio */}
-        <div className="flex items-center gap-8">
+        {/* Som, Clima e Relógio */}
+        <div className="flex items-center gap-6">
+          {/* Sound Toggle */}
+          {!hasUserInteracted ? (
+            <Button
+              onClick={handleEnableSound}
+              variant="secondary"
+              size="sm"
+              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white border-0"
+            >
+              <Volume2 className="w-4 h-4" />
+              <span className="text-sm">Ativar Som</span>
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              title={soundEnabled ? 'Desativar som' : 'Ativar som'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-5 h-5" />
+              ) : (
+                <VolumeX className="w-5 h-5 opacity-50" />
+              )}
+            </Button>
+          )}
+
           <WeatherWidget />
           <div className="flex items-center gap-3 text-white">
             <Clock className="w-6 h-6 opacity-90" />
