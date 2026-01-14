@@ -47,9 +47,9 @@ import type { PanelMediaItem } from '@/hooks/usePanelMedia';
 
 type MediaType = 'image' | 'video' | 'external';
 
-// Max file sizes
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+// Max file sizes - Aumentados para suportar arquivos maiores
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB (antes 5MB)
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB (antes 50MB)
 
 function AdminContent() {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -287,7 +287,7 @@ function AdminContent() {
     const activeMediaItems: MediaItem[] = mediaItems
         .filter(item => item.active)
         .map(item => ({
-            type: item.type === 'external' ? 'image' : item.type as 'image' | 'video',
+            type: item.type as 'image' | 'video' | 'external',
             src: item.src,
             alt: item.alt || '',
             duration: item.duration,
@@ -409,7 +409,7 @@ function AdminContent() {
                                             )}
                                             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                                 <AlertCircle className="w-3 h-3" />
-                                                Máximo: {mediaType === 'image' ? '5MB' : '50MB'}
+                                                Máximo: {mediaType === 'image' ? '50MB' : '500MB'}
                                                 {mediaType === 'image' && ' (será comprimida automaticamente)'}
                                             </p>
                                         </div>
@@ -466,8 +466,8 @@ function AdminContent() {
                         <div className="mt-6">
                             <p className="text-sm text-muted-foreground mb-2">Formatos suportados:</p>
                             <ul className="text-xs text-muted-foreground space-y-1">
-                                <li>• Imagens: JPG, PNG, WEBP (max 5MB)</li>
-                                <li>• Vídeos: MP4, WEBM (max 50MB)</li>
+                                <li>• Imagens: JPG, PNG, WEBP (max 50MB)</li>
+                                <li>• Vídeos: MP4, WEBM (max 500MB)</li>
                                 <li>• Links: URLs de imagens/vídeos</li>
                             </ul>
                         </div>
