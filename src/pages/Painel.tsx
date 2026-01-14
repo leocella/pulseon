@@ -96,8 +96,8 @@ export default function Painel() {
                 <div className="h-24 w-48 bg-muted rounded-2xl" />
               </div>
             ) : currentTicket ? (
-              <div className="text-center animate-slide-up">
-                <p className="text-xl text-muted-foreground mb-3">Senha Atual</p>
+              <div className="text-center animate-slide-up w-full px-4">
+                <p className="text-lg md:text-xl text-muted-foreground mb-6">Senha Atual</p>
                 <TicketNumber
                   number={currentTicket.id_senha}
                   size="2xl"

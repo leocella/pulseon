@@ -17,7 +17,7 @@ export function WeatherWidget() {
             try {
                 // Usando wttr.in - API gratuita sem necessidade de chave
                 // Formato: cidade?format=j1 retorna JSON
-                const response = await fetch('https://wttr.in/Cascavel,PR?format=j1&lang=pt');
+                const response = await fetch('https://wttr.in/Guaira,PR?format=j1&lang=pt');
                 const data = await response.json();
 
                 if (data && data.current_condition && data.current_condition[0]) {
