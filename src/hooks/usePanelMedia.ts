@@ -52,11 +52,17 @@ export function useUploadMedia() {
     }) => {
       let src = url || '';
 
+      // Sanitize unidade name for storage path (remove accents and special chars)
+      const sanitizedUnidade = UNIDADE
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9-_]/g, '_');
+
       // Upload file to Supabase Storage if it's a file
       if (file && type !== 'external') {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${UNIDADE}/${fileName}`;
+        const filePath = `${sanitizedUnidade}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('panel-media' as any)
