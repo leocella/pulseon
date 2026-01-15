@@ -14,28 +14,48 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserRoles(session.user.id);
-            } else {
-                setLoading(false);
-            }
-        });
+        setLoading(true);
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserRoles(session.user.id);
-            } else {
+        // Listen for auth changes FIRST (avoid missing events)
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            // Only synchronous state updates in the callback
+            setSession(nextSession);
+            setUser(nextSession?.user ?? null);
+
+            if (!nextSession?.user) {
                 setRoles([]);
                 setLoading(false);
+                return;
             }
+
+            // Defer any Supabase queries to prevent auth deadlocks
+            setLoading(true);
+            setTimeout(() => {
+                fetchUserRoles(nextSession.user.id);
+            }, 0);
         });
+
+        // THEN check for existing session
+        supabase.auth
+            .getSession()
+            .then(({ data: { session: existingSession } }) => {
+                setSession(existingSession);
+                setUser(existingSession?.user ?? null);
+
+                if (!existingSession?.user) {
+                    setRoles([]);
+                    setLoading(false);
+                    return;
+                }
+
+                fetchUserRoles(existingSession.user.id);
+            })
+            .catch(() => {
+                setRoles([]);
+                setLoading(false);
+            });
 
         return () => subscription.unsubscribe();
     }, []);
