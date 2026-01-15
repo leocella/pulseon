@@ -43,8 +43,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const callNextTicket = useCallNextTicket(unidade);
   const updateStatus = useUpdateTicketStatus();
 
-  // Enable realtime updates
-  useRealtimeQueue();
+  // Enable realtime updates for this unit
+  useRealtimeQueue(unidade);
 
   const handleSaveConfig = () => {
     if (atendente.trim()) {
