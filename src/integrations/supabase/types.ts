@@ -121,15 +121,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      call_next_ticket: {
-        Args: { p_unidade: string }
-        Returns: {
-          hora_emissao: string
-          id: string
-          id_senha: string
-          tipo: Database["public"]["Enums"]["tipo_atendimento"]
-        }[]
-      }
+      call_next_ticket:
+        | {
+            Args: { p_unidade: string }
+            Returns: {
+              hora_emissao: string
+              id: string
+              id_senha: string
+              tipo: Database["public"]["Enums"]["tipo_atendimento"]
+            }[]
+          }
+        | {
+            Args: { p_atendente?: string; p_unidade: string }
+            Returns: {
+              hora_emissao: string
+              id: string
+              id_senha: string
+              tipo: Database["public"]["Enums"]["tipo_atendimento"]
+            }[]
+          }
       get_next_to_call: {
         Args: { p_unidade: string }
         Returns: {
