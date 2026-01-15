@@ -300,33 +300,23 @@ export default function Painel() {
                 </div>
               ) : recentTickets.length > 0 ? (
                 <div className="space-y-2">
-                  {/* Header da tabela */}
-                  <div className="grid grid-cols-3 text-xs text-muted-foreground font-medium px-2 py-1">
-                    <span>Senha</span>
-                    <span className="text-center">Guichê</span>
-                    <span className="text-right">Hora</span>
-                  </div>
-
                   {recentTickets.map((ticket, index) => (
                     <div
                       key={ticket.id}
-                      className={`grid grid-cols-3 items-center p-2 sm:p-3 rounded-lg animate-slide-up ${index === 0 && currentTicket?.id === ticket.id
+                      className={`flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg animate-slide-up ${index === 0 && currentTicket?.id === ticket.id
                           ? 'bg-primary/20 border border-primary/30'
                           : 'bg-secondary/30'
                         }`}
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="text-lg sm:text-xl font-mono font-bold text-foreground">
                           {ticket.id_senha}
                         </span>
-                        <TicketBadge tipo={ticket.tipo} size="sm" />
                       </div>
-                      <span className="text-sm sm:text-base font-medium text-center text-foreground">
+                      <TicketBadge tipo={ticket.tipo} size="sm" />
+                      <span className="text-sm sm:text-base font-medium text-foreground truncate flex-1 text-right">
                         {ticket.atendente || '-'}
-                      </span>
-                      <span className="text-xs sm:text-sm text-muted-foreground text-right">
-                        {ticket.hora_chamada ? format(new Date(ticket.hora_chamada), 'HH:mm') : '-'}
                       </span>
                     </div>
                   ))}
