@@ -75,10 +75,8 @@ export function useGenerateTicket() {
   
   return useMutation({
     mutationFn: async (tipo: TipoAtendimento) => {
-      // Map "Retirada de Laudo" to "Normal" for the database
-      const dbTipo = tipo === 'Retirada de Laudo' ? 'Normal' : tipo;
       const { data, error } = await supabase
-        .rpc('next_ticket', { p_unidade: UNIDADE, p_tipo: dbTipo as 'Normal' | 'Preferencial' });
+        .rpc('next_ticket', { p_unidade: UNIDADE, p_tipo: tipo as 'Normal' | 'Preferencial' });
       
       if (error) throw error;
       if (!data || data.length === 0) throw new Error('Falha ao gerar senha');
