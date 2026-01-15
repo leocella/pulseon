@@ -12,6 +12,74 @@ export interface BackgroundMusicConfig {
     enabled: boolean;
 }
 
+export interface RadioStation {
+    id: string;
+    name: string;
+    url: string;
+    genre: string;
+    description: string;
+}
+
+// Rádios online gratuitas com streams de áudio direto (sem limitação de preview!)
+export const RADIO_STATIONS: RadioStation[] = [
+    {
+        id: 'somafm-spacestation',
+        name: 'Space Station Soma',
+        url: 'https://ice1.somafm.com/spacestation-128-mp3',
+        genre: 'Ambient / Eletrônica',
+        description: 'Música ambiente espacial relaxante',
+    },
+    {
+        id: 'somafm-drone',
+        name: 'Drone Zone',
+        url: 'https://ice1.somafm.com/dronezone-128-mp3',
+        genre: 'Ambient / Drone',
+        description: 'Paisagens sonoras atmosféricas e meditativas',
+    },
+    {
+        id: 'somafm-groove',
+        name: 'Groove Salad',
+        url: 'https://ice1.somafm.com/groovesalad-128-mp3',
+        genre: 'Chillout / Downtempo',
+        description: 'Mix de chillout e downtempo suave',
+    },
+    {
+        id: 'somafm-deepspace',
+        name: 'Deep Space One',
+        url: 'https://ice1.somafm.com/deepspaceone-128-mp3',
+        genre: 'Ambient / Space',
+        description: 'Música deep space e ambient profundo',
+    },
+    {
+        id: 'somafm-lush',
+        name: 'Lush',
+        url: 'https://ice1.somafm.com/lush-128-mp3',
+        genre: 'Downtempo / Vocal',
+        description: 'Eletrônica sensual com vocais femininos',
+    },
+    {
+        id: 'somafm-beatblender',
+        name: 'Beat Blender',
+        url: 'https://ice1.somafm.com/beatblender-128-mp3',
+        genre: 'Deep House / Trip-Hop',
+        description: 'Deep house e trip-hop para relaxar',
+    },
+    {
+        id: 'somafm-fluid',
+        name: 'Fluid',
+        url: 'https://ice1.somafm.com/fluid-128-mp3',
+        genre: 'Instrumental / Hip-Hop',
+        description: 'Instrumental hip-hop e trip-hop suave',
+    },
+    {
+        id: 'anotherplanet',
+        name: 'Another Planet FM',
+        url: 'https://stream.anotherplanet.fm:8000/stream',
+        genre: 'Ambient / Chillout',
+        description: 'Rádio ambient e chillout independente',
+    },
+];
+
 const SETTING_KEY = 'background_music';
 
 const defaultConfig: BackgroundMusicConfig = {
@@ -21,11 +89,13 @@ const defaultConfig: BackgroundMusicConfig = {
 };
 
 // Detecta o tipo de URL de música
-function getMusicType(url: string): 'spotify' | 'youtube' | 'audio' | 'unknown' {
+export function getMusicType(url: string): 'spotify' | 'youtube' | 'radio' | 'audio' | 'unknown' {
     if (!url) return 'unknown';
     if (url.includes('spotify.com')) return 'spotify';
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
-    if (url.match(/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i) || url.includes('stream')) return 'audio';
+    // Detectar rádios conhecidas
+    if (url.includes('somafm.com') || url.includes('anotherplanet.fm') || url.includes('ice1.') || url.includes('stream.')) return 'radio';
+    if (url.match(/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i)) return 'audio';
     return 'unknown';
 }
 
@@ -37,6 +107,11 @@ function getSpotifyEmbedUrl(url: string): string | null {
         return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
     }
     return null;
+}
+
+// Encontra a estação de rádio pelo URL
+export function getRadioStationByUrl(url: string): RadioStation | undefined {
+    return RADIO_STATIONS.find(station => station.url === url);
 }
 
 // Hook para buscar e atualizar configurações de música de fundo
@@ -139,6 +214,7 @@ export function useBackgroundMusic() {
     }, [config, saveMutation]);
 
     const musicType = getMusicType(config.url);
+    const currentRadioStation = getRadioStationByUrl(config.url);
 
     return {
         config,
@@ -148,15 +224,19 @@ export function useBackgroundMusic() {
         toggleEnabled,
         musicType,
         spotifyEmbedUrl: musicType === 'spotify' ? getSpotifyEmbedUrl(config.url) : null,
+        currentRadioStation,
+        radioStations: RADIO_STATIONS,
         isSaving: saveMutation.isPending,
     };
 }
 
 // Componente de player de áudio para usar no Painel
 export function BackgroundMusicPlayer() {
-    const { config, musicType, spotifyEmbedUrl } = useBackgroundMusic();
+    const { config, musicType, spotifyEmbedUrl, currentRadioStation } = useBackgroundMusic();
     const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
     const [hasInteracted, setHasInteracted] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     // Listener global para detectar interação do usuário
     useEffect(() => {
@@ -173,20 +253,34 @@ export function BackgroundMusicPlayer() {
         };
     }, []);
 
-    // Para áudio direto (MP3, etc)
+    // Para áudio direto (MP3, rádio, etc)
     useEffect(() => {
-        if (!config.url || !config.enabled || musicType !== 'audio') {
+        const isAudioType = musicType === 'audio' || musicType === 'radio';
+        
+        if (!config.url || !config.enabled || !isAudioType) {
             if (audioElement) {
                 audioElement.pause();
                 audioElement.src = '';
+                setAudioElement(null);
             }
+            setIsPlaying(false);
             return;
         }
 
         const audio = new Audio();
-        audio.loop = true;
         audio.volume = config.volume;
         audio.src = config.url;
+        audio.crossOrigin = 'anonymous';
+        
+        audio.onplay = () => setIsPlaying(true);
+        audio.onpause = () => setIsPlaying(false);
+        audio.onwaiting = () => setIsLoading(true);
+        audio.onplaying = () => setIsLoading(false);
+        audio.onerror = () => {
+            console.error('Erro ao carregar áudio:', config.url);
+            setIsLoading(false);
+        };
+        
         setAudioElement(audio);
 
         return () => {
@@ -202,22 +296,117 @@ export function BackgroundMusicPlayer() {
         }
     }, [audioElement, config.volume]);
 
-    // Tentar tocar quando o usuário interagir (para MP3)
+    // Tentar tocar quando o usuário interagir
     useEffect(() => {
-        if (!audioElement || !config.enabled || !hasInteracted || musicType !== 'audio') return;
+        const isAudioType = musicType === 'audio' || musicType === 'radio';
+        if (!audioElement || !config.enabled || !hasInteracted || !isAudioType) return;
 
         const playAudio = async () => {
             try {
+                setIsLoading(true);
                 await audioElement.play();
             } catch (e) {
                 console.log('Autoplay bloqueado, aguardando interação do usuário');
+                setIsLoading(false);
             }
         };
 
         playAudio();
     }, [audioElement, config.enabled, hasInteracted, musicType]);
 
-    // Renderizar iframe do Spotify - posicionado no header do painel
+    const handlePlayPause = async () => {
+        if (!audioElement) return;
+        
+        if (isPlaying) {
+            audioElement.pause();
+        } else {
+            try {
+                setIsLoading(true);
+                await audioElement.play();
+            } catch (e) {
+                console.error('Erro ao tocar:', e);
+                setIsLoading(false);
+            }
+        }
+    };
+
+    // Player para Rádio online
+    if (config.enabled && musicType === 'radio') {
+        return (
+            <div
+                style={{
+                    width: '300px',
+                    height: '80px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    flexShrink: 0,
+                    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px',
+                    gap: '12px',
+                }}
+            >
+                <button
+                    onClick={handlePlayPause}
+                    style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        flexShrink: 0,
+                    }}
+                >
+                    {isLoading ? (
+                        <span style={{ color: 'white', fontSize: '16px' }}>⏳</span>
+                    ) : isPlaying ? (
+                        <span style={{ color: 'white', fontSize: '20px' }}>⏸</span>
+                    ) : (
+                        <span style={{ color: 'white', fontSize: '20px', marginLeft: '2px' }}>▶</span>
+                    )}
+                </button>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{ 
+                        color: 'white', 
+                        fontSize: '13px', 
+                        fontWeight: 600, 
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}>
+                        📻 {currentRadioStation?.name || 'Rádio Online'}
+                    </div>
+                    <div style={{ 
+                        color: 'rgba(255,255,255,0.6)', 
+                        fontSize: '11px',
+                        marginTop: '2px',
+                    }}>
+                        {currentRadioStation?.genre || 'Stream de áudio'}
+                    </div>
+                    <div style={{ 
+                        color: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.4)', 
+                        fontSize: '10px',
+                        marginTop: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                    }}>
+                        {isPlaying && <span style={{ animation: 'pulse 1.5s infinite' }}>●</span>}
+                        {isPlaying ? 'Tocando ao vivo' : 'Clique para tocar'}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Renderizar iframe do Spotify
     if (config.enabled && musicType === 'spotify' && spotifyEmbedUrl) {
         return (
             <div
@@ -287,6 +476,39 @@ export function SpotifyPreview({ url }: { url: string }) {
                 loading="lazy"
                 title="Spotify Preview"
             />
+        </div>
+    );
+}
+
+// Componente seletor de rádios para o Admin
+export function RadioSelector({ onSelect, currentUrl }: { onSelect: (url: string) => void; currentUrl: string }) {
+    return (
+        <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Rádios Online (sem limitação!)</label>
+            <div className="grid gap-2">
+                {RADIO_STATIONS.map((station) => (
+                    <button
+                        key={station.id}
+                        onClick={() => onSelect(station.url)}
+                        className={`text-left p-3 rounded-lg border transition-all ${
+                            currentUrl === station.url
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border bg-card hover:border-primary/50'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg">📻</span>
+                            <div className="flex-1">
+                                <div className="font-medium text-sm">{station.name}</div>
+                                <div className="text-xs text-muted-foreground">{station.genre}</div>
+                            </div>
+                            {currentUrl === station.url && (
+                                <span className="text-primary text-sm">✓</span>
+                            )}
+                        </div>
+                    </button>
+                ))}
+            </div>
         </div>
     );
 }
