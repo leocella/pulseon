@@ -240,7 +240,9 @@ export default function Painel() {
         <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-2 sm:gap-4 h-full overflow-hidden">
 
           {/* Senha Atual - Atendendo Agora */}
-          <Card className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+          <Card className={`p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${
+            currentTicket?.status === 'chamado' ? 'animate-card-glow border-primary/50' : ''
+          }`}>
             <h2 className="text-lg sm:text-xl font-bold text-primary mb-4 text-center">
               Atendendo Agora
             </h2>
@@ -250,7 +252,7 @@ export default function Painel() {
                 <div className="h-16 w-32 bg-muted rounded-xl" />
               </div>
             ) : currentTicket ? (
-              <div className="text-center animate-slide-up">
+              <div className={`text-center ${currentTicket.status === 'chamado' ? 'animate-attention' : 'animate-slide-up'}`}>
                 <TicketNumber
                   number={currentTicket.id_senha}
                   size="2xl"
@@ -265,7 +267,9 @@ export default function Painel() {
                     {currentTicket.atendente}
                   </div>
                 )}
-                <div className="mt-3 text-sm text-chamado flex items-center justify-center gap-1">
+                <div className={`mt-3 text-sm flex items-center justify-center gap-1 ${
+                  currentTicket.status === 'chamado' ? 'text-chamado font-bold animate-pulse' : 'text-muted-foreground'
+                }`}>
                   <ChevronRight className="w-4 h-4" />
                   <span>
                     {currentTicket.status === 'chamado'
