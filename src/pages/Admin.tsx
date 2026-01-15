@@ -18,7 +18,9 @@ import {
     FileUp,
     AlertCircle,
     Play,
-    LogOut
+    LogOut,
+    Music,
+    Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -46,6 +48,7 @@ import { MediaCarousel } from '@/components/MediaCarousel';
 import { useAuth } from '@/hooks/useAuth';
 import type { MediaItem } from '@/components/MediaCarousel';
 import type { PanelMediaItem } from '@/hooks/usePanelMedia';
+import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 
 type MediaType = 'image' | 'video' | 'external';
 
@@ -72,6 +75,9 @@ function AdminContent() {
     const uploadMedia = useUploadMedia();
     const deleteMedia = useDeleteMedia();
     const updateMedia = useUpdateMedia();
+
+    // Background music config
+    const { config: musicConfig, setUrl: setMusicUrl, setVolume: setMusicVolume, toggleEnabled: toggleMusic } = useBackgroundMusic();
 
     // Validate file size
     const validateFileSize = (file: File): boolean => {
@@ -346,6 +352,77 @@ function AdminContent() {
                         <p className="text-xs text-muted-foreground mt-2 text-center">
                             As imagens aparecem inteiras (sem corte) com fundo preto nas bordas
                         </p>
+                    </Card>
+
+                    {/* Background Music Config */}
+                    <Card className="p-6 mt-6">
+                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                            <Music className="w-5 h-5 text-primary" />
+                            Música de Fundo
+                        </h2>
+
+                        <div className="space-y-4">
+                            {/* Enable/Disable */}
+                            <div className="flex items-center justify-between">
+                                <Label>Música ativada</Label>
+                                <Button
+                                    variant={musicConfig.enabled ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={toggleMusic}
+                                >
+                                    {musicConfig.enabled ? 'Ativada' : 'Desativada'}
+                                </Button>
+                            </div>
+
+                            {/* URL Input */}
+                            <div className="space-y-2">
+                                <Label htmlFor="musicUrl">URL do Áudio (MP3)</Label>
+                                <Input
+                                    id="musicUrl"
+                                    placeholder="https://exemplo.com/musica.mp3"
+                                    value={musicConfig.url}
+                                    onChange={(e) => setMusicUrl(e.target.value)}
+                                    className="text-sm"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Cole a URL direta de um arquivo MP3 ou stream de áudio
+                                </p>
+                            </div>
+
+                            {/* Volume Control */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="flex items-center gap-2">
+                                        <Volume2 className="w-4 h-4" />
+                                        Volume: {Math.round(musicConfig.volume * 100)}%
+                                    </Label>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={musicConfig.volume * 100}
+                                    onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                    className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                                />
+                                <p className="text-xs text-muted-foreground text-center">
+                                    Volume baixo recomendado: 20-40%
+                                </p>
+                            </div>
+
+                            {/* Preview audio if URL exists */}
+                            {musicConfig.url && (
+                                <div className="pt-2 border-t">
+                                    <Label className="text-sm text-muted-foreground mb-2 block">Testar Áudio:</Label>
+                                    <audio
+                                        controls
+                                        src={musicConfig.url}
+                                        className="w-full h-10"
+                                        style={{ filter: 'grayscale(1)' }}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </Card>
                 </div>
 

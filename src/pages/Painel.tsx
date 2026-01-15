@@ -6,6 +6,7 @@ import { useCurrentTicket, useRecentlyCalledTickets } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePanelMedia } from '@/hooks/usePanelMedia';
 import { useAlertSound } from '@/hooks/useAlertSound';
+import { BackgroundMusicPlayer } from '@/hooks/useBackgroundMusic';
 import { TicketNumber } from '@/components/TicketNumber';
 import { TicketBadge } from '@/components/TicketBadge';
 import { MediaCarousel } from '@/components/MediaCarousel';
@@ -146,6 +147,9 @@ export default function Painel() {
   }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col">
+      {/* Background Music Player */}
+      <BackgroundMusicPlayer />
+
       {/* Header */}
       <header className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-primary to-primary/80 border-b border-primary/20 gap-3 sm:gap-0">
         {/* Logo */}
@@ -240,9 +244,8 @@ export default function Painel() {
         <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-2 sm:gap-4 h-full overflow-hidden">
 
           {/* Senha Atual - Atendendo Agora */}
-          <Card className={`p-5 sm:p-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${
-            currentTicket?.status === 'chamado' ? 'animate-card-glow border-primary/50' : ''
-          }`}>
+          <Card className={`p-5 sm:p-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${currentTicket?.status === 'chamado' ? 'animate-card-glow border-primary/50' : ''
+            }`}>
             <h2 className="text-lg sm:text-xl font-bold text-primary mb-6 text-center">
               Atendendo Agora
             </h2>
@@ -259,18 +262,17 @@ export default function Painel() {
                   animate={currentTicket.status === 'chamado'}
                   className={currentTicket.status !== 'chamado' ? 'text-atendimento' : ''}
                 />
-                
+
                 <TicketBadge tipo={currentTicket.tipo} size="md" />
-                
+
                 {currentTicket.atendente && (
                   <div className="text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1.5">
                     {currentTicket.atendente}
                   </div>
                 )}
-                
-                <div className={`text-sm flex items-center justify-center gap-1 ${
-                  currentTicket.status === 'chamado' ? 'text-chamado font-bold animate-pulse' : 'text-muted-foreground'
-                }`}>
+
+                <div className={`text-sm flex items-center justify-center gap-1 ${currentTicket.status === 'chamado' ? 'text-chamado font-bold animate-pulse' : 'text-muted-foreground'
+                  }`}>
                   <ChevronRight className="w-4 h-4" />
                   <span>
                     {currentTicket.status === 'chamado'
@@ -309,8 +311,8 @@ export default function Painel() {
                     <div
                       key={ticket.id}
                       className={`flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg animate-slide-up ${index === 0 && currentTicket?.id === ticket.id
-                          ? 'bg-primary/20 border border-primary/30'
-                          : 'bg-secondary/30'
+                        ? 'bg-primary/20 border border-primary/30'
+                        : 'bg-secondary/30'
                         }`}
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
