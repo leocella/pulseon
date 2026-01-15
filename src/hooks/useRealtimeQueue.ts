@@ -26,6 +26,22 @@ export function useRealtimeQueue() {
       )
       .subscribe();
 
+    const channelMedia = supabase
+      .channel('media-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'panel_media',
+          filter: `unidade=eq.${UNIDADE}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['panelMedia'] });
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
