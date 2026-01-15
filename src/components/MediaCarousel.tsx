@@ -70,15 +70,20 @@ export function MediaCarousel({
     setIsVideoPlaying(false);
   }, [items.length]);
 
-  // Auto-advance for images
+  // Auto-advance for all media types
   useEffect(() => {
     if (!autoPlay || items.length <= 1) return;
 
     const currentItem = items[currentIndex];
     if (!currentItem) return;
 
-    // For native videos, wait until they finish (external videos use duration timer)
-    if (currentItem.type === 'video' && isVideoPlaying) return;
+    // For native videos that are playing, let them finish naturally
+    // But also set a maximum timeout to prevent getting stuck
+    if (currentItem.type === 'video' && isVideoPlaying) {
+      // Set a maximum timeout of 60 seconds for videos
+      const maxVideoTimeout = setTimeout(goToNext, 60000);
+      return () => clearTimeout(maxVideoTimeout);
+    }
 
     const duration = (currentItem.duration || 8) * 1000;
     const timer = setTimeout(goToNext, duration);
@@ -150,6 +155,11 @@ export function MediaCarousel({
             playsInline
             onPlay={() => setIsVideoPlaying(true)}
             onEnded={() => {
+              setIsVideoPlaying(false);
+              goToNext();
+            }}
+            onError={() => {
+              console.log('Video error, advancing to next');
               setIsVideoPlaying(false);
               goToNext();
             }}
