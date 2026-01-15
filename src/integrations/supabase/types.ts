@@ -92,6 +92,33 @@ export type Database = {
         }
         Relationships: []
       }
+      panel_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          unidade: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          unidade: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          unidade?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       sequencia_senhas: {
         Row: {
           data_referencia: string
