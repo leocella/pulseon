@@ -82,6 +82,29 @@ export function useActiveTickets(unidade?: string) {
   });
 }
 
+// Fetch recently called tickets (for display on panel - history of called tickets)
+export function useRecentlyCalledTickets(limit: number = 5, unidade?: string) {
+  const unit = unidade || UNIDADE;
+
+  return useQuery({
+    queryKey: ['recentlyCalledTickets', unit, limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fila_atendimento')
+        .select('*')
+        .eq('unidade', unit)
+        .in('status', ['chamado', 'em_atendimento', 'finalizado'])
+        .not('hora_chamada', 'is', null)
+        .order('hora_chamada', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return (data || []) as Ticket[];
+    },
+    refetchInterval: POLLING_INTERVAL,
+  });
+}
+
 // Generate new ticket
 export function useGenerateTicket(unidade?: string) {
   const unit = unidade || UNIDADE;

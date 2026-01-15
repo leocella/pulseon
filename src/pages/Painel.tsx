@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Monitor, Clock, ChevronRight, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
+import { Monitor, Clock, ChevronRight, Volume2, VolumeX, Maximize, Minimize, History } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useCurrentTicket, useWaitingTickets } from '@/hooks/useQueue';
+import { useCurrentTicket, useRecentlyCalledTickets } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePanelMedia } from '@/hooks/usePanelMedia';
 import { useAlertSound } from '@/hooks/useAlertSound';
@@ -24,7 +24,7 @@ export default function Painel() {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket();
-  const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(3);
+  const { data: recentTickets = [], isLoading: loadingRecent } = useRecentlyCalledTickets(6);
   const { data: dbMediaItems = [] } = usePanelMedia();
   const { playAlertSound, initAudioContext } = useAlertSound();
 
@@ -224,101 +224,120 @@ export default function Painel() {
         </div>
       </header>
 
-      {/* Main Content - Layout otimizado para TV */}
-      <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-4">
-        {/* Current Ticket - First on mobile */}
-        <div className="order-1 lg:order-2 lg:col-span-3 xl:col-span-2">
-          <Card className="h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-card min-h-[200px] sm:min-h-0">
+      {/* Main Content - Layout TV: Carrossel à esquerda, Info à direita */}
+      <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-4 overflow-hidden">
+
+        {/* Media Carousel - Lado esquerdo, ocupa maior parte */}
+        <div className="order-2 lg:order-1 lg:col-span-8 h-full">
+          <MediaCarousel
+            items={mediaItems}
+            autoPlay
+            className="h-[40vh] sm:h-[50vh] lg:h-full rounded-xl"
+          />
+        </div>
+
+        {/* Coluna Direita: Senha Atual + Histórico */}
+        <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-2 sm:gap-4 h-full overflow-hidden">
+
+          {/* Senha Atual - Atendendo Agora */}
+          <Card className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+            <h2 className="text-lg sm:text-xl font-bold text-primary mb-3 text-center">
+              Atendendo Agora
+            </h2>
+
             {loadingCurrent ? (
-              <div className="animate-pulse">
-                <div className="h-16 sm:h-24 w-32 sm:w-48 bg-muted rounded-2xl" />
+              <div className="animate-pulse flex justify-center">
+                <div className="h-16 w-32 bg-muted rounded-xl" />
               </div>
             ) : currentTicket ? (
-              <div className="text-center animate-slide-up w-full px-2 sm:px-4">
-                <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-3 sm:mb-6">Senha Atual</p>
+              <div className="text-center animate-slide-up">
                 <TicketNumber
                   number={currentTicket.id_senha}
                   size="2xl"
                   animate={currentTicket.status === 'chamado'}
                   className={currentTicket.status !== 'chamado' ? 'text-atendimento' : ''}
                 />
-                <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2 sm:gap-3">
+                <div className="mt-2 flex items-center justify-center gap-2">
                   <TicketBadge tipo={currentTicket.tipo} size="md" />
                 </div>
-                <div className="mt-4 sm:mt-6 text-sm sm:text-lg font-medium text-chamado flex items-center justify-center gap-2">
-                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                {currentTicket.atendente && (
+                  <div className="mt-3 text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1 inline-block">
+                    {currentTicket.atendente}
+                  </div>
+                )}
+                <div className="mt-3 text-sm text-chamado flex items-center justify-center gap-1">
+                  <ChevronRight className="w-4 h-4" />
                   <span>
                     {currentTicket.status === 'chamado'
                       ? 'Dirija-se ao atendimento'
                       : 'Em atendimento'}
                   </span>
                 </div>
-                {currentTicket.atendente && (
-                  <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-                    Atendente: {currentTicket.atendente}
-                  </p>
-                )}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground">
-                <Monitor className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-30" />
-                <p className="text-lg sm:text-xl">Aguardando chamada</p>
+              <div className="text-center text-muted-foreground py-4">
+                <Monitor className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                <p className="text-base">Aguardando chamada</p>
               </div>
             )}
           </Card>
-        </div>
 
-        {/* Next Tickets - Coluna menor para dar espaço ao carrossel */}
-        <div className="order-2 lg:order-3 lg:col-span-2">
-          <Card className="h-full p-3 sm:p-4 bg-card">
-            <h2 className="text-base sm:text-lg font-bold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              Próximas Senhas
+          {/* Histórico de Senhas Chamadas */}
+          <Card className="flex-1 p-3 sm:p-4 bg-card overflow-hidden flex flex-col">
+            <h2 className="text-base sm:text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+              <History className="w-4 h-4 text-primary" />
+              Últimas Chamadas
             </h2>
 
-            {loadingWaiting ? (
-              <div className="space-y-2 sm:space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="h-12 sm:h-16 bg-muted rounded-xl" />
-                  </div>
-                ))}
-              </div>
-            ) : waitingTickets.length > 0 ? (
-              <div className="space-y-2 sm:space-y-3">
-                {waitingTickets.map((ticket, index) => (
-                  <div
-                    key={ticket.id}
-                    className="flex items-center justify-between p-2 sm:p-3 rounded-xl bg-secondary/50 animate-slide-up"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <span className="text-lg sm:text-xl font-mono font-bold text-foreground">
-                        {ticket.id_senha}
-                      </span>
-                      <TicketBadge tipo={ticket.tipo} size="sm" />
+            <div className="flex-1 overflow-y-auto">
+              {loadingRecent ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-12 bg-muted rounded-lg" />
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(ticket.hora_emissao), 'HH:mm')}
-                    </span>
+                  ))}
+                </div>
+              ) : recentTickets.length > 0 ? (
+                <div className="space-y-2">
+                  {/* Header da tabela */}
+                  <div className="grid grid-cols-3 text-xs text-muted-foreground font-medium px-2 py-1">
+                    <span>Senha</span>
+                    <span className="text-center">Guichê</span>
+                    <span className="text-right">Hora</span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground py-6 sm:py-8">
-                <p className="text-sm">Nenhuma senha na fila</p>
-              </div>
-            )}
-          </Card>
-        </div>
 
-        {/* Media Carousel - Ocupa mais espaço para destaque na TV */}
-        <div className="order-3 lg:order-1 lg:col-span-7 xl:col-span-8">
-          <MediaCarousel
-            items={mediaItems}
-            autoPlay
-            className="h-[50vh] sm:h-[60vh] lg:h-full lg:min-h-0 aspect-video"
-          />
+                  {recentTickets.map((ticket, index) => (
+                    <div
+                      key={ticket.id}
+                      className={`grid grid-cols-3 items-center p-2 sm:p-3 rounded-lg animate-slide-up ${index === 0 && currentTicket?.id === ticket.id
+                          ? 'bg-primary/20 border border-primary/30'
+                          : 'bg-secondary/30'
+                        }`}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg sm:text-xl font-mono font-bold text-foreground">
+                          {ticket.id_senha}
+                        </span>
+                        <TicketBadge tipo={ticket.tipo} size="sm" />
+                      </div>
+                      <span className="text-sm sm:text-base font-medium text-center text-foreground">
+                        {ticket.atendente || '-'}
+                      </span>
+                      <span className="text-xs sm:text-sm text-muted-foreground text-right">
+                        {ticket.hora_chamada ? format(new Date(ticket.hora_chamada), 'HH:mm') : '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground py-8">
+                  <p className="text-sm">Nenhuma senha chamada ainda</p>
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </div>
