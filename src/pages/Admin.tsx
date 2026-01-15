@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Upload,
     Image as ImageIcon,
@@ -16,7 +17,8 @@ import {
     Download,
     FileUp,
     AlertCircle,
-    Play
+    Play,
+    LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -41,7 +43,7 @@ import { toast } from 'sonner';
 import { usePanelMedia, useUploadMedia, useDeleteMedia, useUpdateMedia } from '@/hooks/usePanelMedia';
 import { UNIDADE } from '@/lib/config';
 import { MediaCarousel } from '@/components/MediaCarousel';
-import { AdminAuth } from '@/components/AdminAuth';
+import { useAuth } from '@/hooks/useAuth';
 import type { MediaItem } from '@/components/MediaCarousel';
 import type { PanelMediaItem } from '@/hooks/usePanelMedia';
 
@@ -52,6 +54,8 @@ const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB (antes 5MB)
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB (antes 50MB)
 
 function AdminContent() {
+    const navigate = useNavigate();
+    const { signOut, user } = useAuth();
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<PanelMediaItem | null>(null);
@@ -296,10 +300,26 @@ function AdminContent() {
     return (
         <div className="min-h-screen bg-background p-6 pb-20">
             {/* Header */}
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold text-foreground mb-2">Painel Administrativo</h1>
-                <p className="text-muted-foreground">Gerenciar mídias exibidas no Painel TV</p>
-                <p className="text-sm text-muted-foreground mt-1">Unidade: {UNIDADE}</p>
+            <header className="mb-8 flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-foreground mb-2">Painel Administrativo</h1>
+                    <p className="text-muted-foreground">Gerenciar mídias exibidas no Painel TV</p>
+                    <p className="text-sm text-muted-foreground mt-1">Unidade: {UNIDADE}</p>
+                    {user?.email && (
+                        <p className="text-xs text-muted-foreground mt-1">Logado como: {user.email}</p>
+                    )}
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                        await signOut();
+                        navigate('/login');
+                    }}
+                >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                </Button>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -659,9 +679,5 @@ function AdminContent() {
 }
 
 export default function Admin() {
-    return (
-        <AdminAuth>
-            <AdminContent />
-        </AdminAuth>
-    );
+    return <AdminContent />;
 }
