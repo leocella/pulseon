@@ -60,8 +60,38 @@ export function useBackgroundMusic() {
             }
             return data?.setting_value as BackgroundMusicConfig | null;
         },
-        staleTime: 1000 * 60, // Cache por 1 minuto
+        staleTime: 1000 * 5, // Cache por 5 segundos apenas
+        refetchInterval: 1000 * 10, // Polling a cada 10 segundos como fallback
     });
+
+    // Realtime: sincroniza instantaneamente quando configuração muda
+    useEffect(() => {
+        console.log('useBackgroundMusic: Subscribing to realtime for unit:', UNIDADE);
+        
+        const channel = supabase
+            .channel(`panel-settings-${UNIDADE}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'panel_settings',
+                    filter: `unidade=eq.${UNIDADE}`,
+                },
+                (payload) => {
+                    console.log('Realtime panel_settings update:', payload);
+                    queryClient.invalidateQueries({ queryKey: ['panelSettings', UNIDADE, SETTING_KEY] });
+                }
+            )
+            .subscribe((status) => {
+                console.log('Realtime panel_settings subscription status:', status);
+            });
+
+        return () => {
+            console.log('useBackgroundMusic: Unsubscribing from realtime');
+            supabase.removeChannel(channel);
+        };
+    }, [queryClient]);
 
     // Config atual (do banco ou default)
     const config: BackgroundMusicConfig = dbConfig || defaultConfig;
