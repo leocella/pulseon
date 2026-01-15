@@ -233,7 +233,7 @@ export default function Painel() {
           <MediaCarousel
             items={mediaItems}
             autoPlay
-            className="h-48 sm:h-64 lg:h-full lg:min-h-0"
+            className="h-[50vh] sm:h-[60vh] lg:h-full lg:min-h-0"
           />
         </div>
       </div>
