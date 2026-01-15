@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { 
-  Phone, 
-  Play, 
-  CheckCircle, 
-  XCircle, 
-  Users, 
+import {
+  Phone,
+  Play,
+  CheckCircle,
+  XCircle,
+  Users,
   Clock,
   Loader2,
   AlertCircle
@@ -12,11 +12,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { 
-  useCurrentTicket, 
-  useWaitingTickets, 
+import {
+  useCurrentTicket,
+  useWaitingTickets,
   useCallNextTicket,
-  useUpdateTicketStatus 
+  useUpdateTicketStatus
 } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { TicketNumber } from '@/components/TicketNumber';
@@ -31,19 +31,44 @@ interface SecretariaPanelProps {
 }
 
 function SecretariaPanel({ unidade }: SecretariaPanelProps) {
-  const [atendente, setAtendente] = useState('');
-  const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket(unidade);
+  const [atendente, setAtendente] = useState(() => localStorage.getItem('atendente_nome') || '');
+  const [configMode, setConfigMode] = useState(!atendente);
+
+  // Hooks usando a unidade recebida via props e filtrando pelo atendente logado
+  const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket(unidade, atendente);
+
+  // waitingTickets: limit=undefined, unidade=unidade
   const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(undefined, unidade);
-  
+
   const callNextTicket = useCallNextTicket(unidade);
   const updateStatus = useUpdateTicketStatus();
-  
+
   // Enable realtime updates
   useRealtimeQueue();
 
+  const handleSaveConfig = () => {
+    if (atendente.trim()) {
+      localStorage.setItem('atendente_nome', atendente.trim());
+      setConfigMode(false);
+    } else {
+      toast.error('Por favor, identifique seu guichê ou nome');
+    }
+  };
+
+  const handleChangeConfig = () => {
+    setConfigMode(true);
+  };
+
   const handleCallNext = async () => {
+    if (!atendente) {
+      toast.error('Identifique-se antes de chamar');
+      setConfigMode(true);
+      return;
+    }
+
     try {
-      const result = await callNextTicket.mutateAsync();
+      // Passamos o atendente para vincular a senha a este guichê
+      const result = await callNextTicket.mutateAsync(atendente);
       if (result) {
         toast.success(`Chamando senha ${result.id_senha}`);
       } else {
@@ -57,12 +82,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
 
   const handleStartService = async () => {
     if (!currentTicket) return;
-    
-    if (!atendente.trim()) {
-      toast.error('Digite o nome do atendente');
-      return;
-    }
-    
+
     try {
       await updateStatus.mutateAsync({
         id: currentTicket.id,
@@ -78,7 +98,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
 
   const handleFinish = async () => {
     if (!currentTicket) return;
-    
+
     try {
       await updateStatus.mutateAsync({
         id: currentTicket.id,
@@ -93,7 +113,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
 
   const handleNoShow = async () => {
     if (!currentTicket) return;
-    
+
     try {
       await updateStatus.mutateAsync({
         id: currentTicket.id,
@@ -109,13 +129,64 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const preferencialCount = waitingTickets.filter(t => t.tipo === 'Preferencial').length;
   const normalCount = waitingTickets.filter(t => t.tipo === 'Normal').length;
 
+  // Tela de Configuração Inicial (Login Simplificado)
+  if (configMode) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="max-w-md w-full p-8 shadow-lg">
+          <div className="text-center mb-8">
+            <Users className="w-16 h-16 mx-auto text-primary mb-4" />
+            <h1 className="text-2xl font-bold text-foreground">Identificação</h1>
+            <p className="text-muted-foreground mt-2">
+              Como você quer ser identificado(a) neste guichê?
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do Atendente ou Guichê</label>
+              <Input
+                placeholder="Ex: Guichê 01, Maria, Dr. Silva..."
+                value={atendente}
+                onChange={(e) => setAtendente(e.target.value)}
+                className="text-lg h-12"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveConfig()}
+              />
+            </div>
+
+            <Button
+              onClick={handleSaveConfig}
+              className="w-full h-12 text-lg"
+              disabled={!atendente.trim()}
+            >
+              Começar a Atender
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       {/* Header */}
       <header className="flex items-center justify-between mb-8 mt-12">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Painel da Secretaria</h1>
-          <p className="text-muted-foreground">Unidade: {unidade}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted-foreground">Unidade: {unidade}</p>
+            <span className="text-muted-foreground">•</span>
+            <div className="flex items-center gap-2 bg-secondary px-3 py-1 rounded-full">
+              <span className="font-medium text-primary">{atendente}</span>
+              <button
+                onClick={handleChangeConfig}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                (Alterar)
+              </button>
+            </div>
+          </div>
         </div>
         <Link to="/historico">
           <Button variant="outline">
@@ -132,19 +203,31 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
           <Card className="p-6">
             <Button
               onClick={handleCallNext}
-              disabled={callNextTicket.isPending || waitingTickets.length === 0}
-              className="w-full h-24 text-2xl font-bold bg-primary hover:bg-primary/90"
+              disabled={callNextTicket.isPending || waitingTickets.length === 0 || (currentTicket !== null && currentTicket !== undefined)}
+              className="w-full h-24 text-2xl font-bold bg-primary hover:bg-primary/90 disabled:opacity-50"
             >
               {callNextTicket.isPending ? (
                 <Loader2 className="w-8 h-8 mr-3 animate-spin" />
+              ) : (currentTicket) ? (
+                <span className="flex items-center">
+                  <AlertCircle className="w-8 h-8 mr-3" />
+                  FINALIZE O ATENDIMENTO ATUAL
+                </span>
               ) : (
-                <Phone className="w-8 h-8 mr-3" />
+                <span className="flex items-center">
+                  <Phone className="w-8 h-8 mr-3" />
+                  CHAMAR PRÓXIMA SENHA
+                </span>
               )}
-              CHAMAR PRÓXIMA SENHA
             </Button>
             {waitingTickets.length === 0 && (
               <p className="text-center text-muted-foreground mt-4">
                 Nenhuma senha aguardando
+              </p>
+            )}
+            {currentTicket && (
+              <p className="text-center text-orange-500 font-medium mt-4">
+                Você já tem uma senha em atendimento. Finalize-a para chamar a próxima.
               </p>
             )}
           </Card>
@@ -153,9 +236,9 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
           <Card className="p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
-              Senha Atual
+              Senha em Atendimento ({atendente})
             </h2>
-            
+
             {loadingCurrent ? (
               <div className="animate-pulse h-32 bg-muted rounded-xl" />
             ) : currentTicket ? (
@@ -176,25 +259,13 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                   </div>
                 </div>
 
-                {/* Attendant Input */}
-                {currentTicket.status === 'chamado' && (
-                  <div className="space-y-4">
-                    <Input
-                      placeholder="Nome do atendente"
-                      value={atendente}
-                      onChange={(e) => setAtendente(e.target.value)}
-                      className="text-lg h-12"
-                    />
-                  </div>
-                )}
-
                 {/* Action Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {currentTicket.status === 'chamado' && (
                     <>
                       <Button
                         onClick={handleStartService}
-                        disabled={updateStatus.isPending || !atendente.trim()}
+                        disabled={updateStatus.isPending}
                         className="h-14 bg-atendimento hover:bg-atendimento/90 text-atendimento-foreground"
                       >
                         {updateStatus.isPending ? (
@@ -215,7 +286,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                       </Button>
                     </>
                   )}
-                  
+
                   {currentTicket.status === 'em_atendimento' && (
                     <Button
                       onClick={handleFinish}
@@ -231,17 +302,11 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                     </Button>
                   )}
                 </div>
-
-                {currentTicket.atendente && (
-                  <p className="text-sm text-muted-foreground">
-                    Atendente: {currentTicket.atendente}
-                  </p>
-                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <AlertCircle className="w-12 h-12 mb-4 opacity-50" />
-                <p>Nenhuma senha sendo atendida</p>
+                <p>Nenhuma senha sendo atendida por você</p>
                 <p className="text-sm">Clique em "Chamar Próxima Senha" para iniciar</p>
               </div>
             )}
@@ -272,7 +337,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                 <p className="text-xs text-normal">Normais</p>
               </div>
             </div>
-            
+
             {loadingWaiting ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -284,9 +349,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                 {waitingTickets.map((ticket, index) => (
                   <div
                     key={ticket.id}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      index === 0 ? 'bg-primary/10 border-2 border-primary/30' : 'bg-secondary/50'
-                    }`}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${index === 0 ? 'bg-primary/10 border-2 border-primary/30' : 'bg-secondary/50'
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="font-mono font-bold text-lg text-foreground">
