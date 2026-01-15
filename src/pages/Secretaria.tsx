@@ -31,8 +31,8 @@ interface SecretariaPanelProps {
 }
 
 function SecretariaPanel({ unidade }: SecretariaPanelProps) {
-  const [atendente, setAtendente] = useState(() => localStorage.getItem('atendente_nome') || '');
-  const [configMode, setConfigMode] = useState(!atendente);
+  const [atendente, setAtendente] = useState('');
+  const [configMode, setConfigMode] = useState(true);
 
   // Hooks usando a unidade recebida via props e filtrando pelo atendente logado
   const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket(unidade, atendente);
