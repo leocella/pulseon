@@ -20,6 +20,7 @@ export default function Painel() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const lastTicketIdRef = useRef<string | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   
   const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket();
   const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(3);
@@ -28,6 +29,47 @@ export default function Painel() {
 
   // Enable realtime updates
   useRealtimeQueue();
+
+  // Keep screen awake using Wake Lock API
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock ativado - tela permanecerá ligada');
+        }
+      } catch (err) {
+        console.log('Wake Lock não disponível:', err);
+      }
+    };
+
+    requestWakeLock();
+
+    // Re-acquire wake lock when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release();
+      }
+    };
+  }, []);
+
+  // Auto-reload page every 4 hours to prevent memory issues
+  useEffect(() => {
+    const reloadInterval = setInterval(() => {
+      window.location.reload();
+    }, 4 * 60 * 60 * 1000); // 4 hours
+
+    return () => clearInterval(reloadInterval);
+  }, []);
 
   // Handle user interaction to enable audio
   const handleEnableSound = useCallback(() => {
@@ -74,7 +116,6 @@ export default function Painel() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col">
       {/* Header */}
