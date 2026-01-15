@@ -308,11 +308,11 @@ function AdminContent() {
                     <Card className="p-6">
                         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                             <Eye className="w-5 h-5 text-primary" />
-                            Preview do Painel
+                            Preview do Painel (como aparece na TV)
                         </h2>
-                        <div className="aspect-video bg-black rounded-xl overflow-hidden">
+                        <div className="bg-black rounded-xl overflow-hidden" style={{ height: '60vh', minHeight: '400px' }}>
                             {activeMediaItems.length > 0 ? (
-                                <MediaCarousel items={activeMediaItems} autoPlay showControls />
+                                <MediaCarousel items={activeMediaItems} autoPlay showControls className="h-full" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-white">
                                     <div className="text-center">
@@ -323,6 +323,9 @@ function AdminContent() {
                                 </div>
                             )}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-2 text-center">
+                            As imagens aparecem inteiras (sem corte) com fundo preto nas bordas
+                        </p>
                     </Card>
                 </div>
 
