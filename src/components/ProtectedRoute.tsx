@@ -76,6 +76,15 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         try {
             const allowedRoles = role === 'admin' ? ['admin'] : ['admin', 'secretary'];
             
+            // Ensure we have a valid session before querying
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) {
+                console.error('No session when checking role');
+                setHasAccess(false);
+                setLoading(false);
+                return;
+            }
+            
             const { data, error } = await supabase
                 .from('user_roles')
                 .select('role')
@@ -85,6 +94,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
                 console.error('Error checking role:', error);
                 setHasAccess(false);
             } else {
+                console.log('User roles found:', data);
                 const userHasRole = data?.some(r => allowedRoles.includes(r.role)) ?? false;
                 setHasAccess(userHasRole);
             }
