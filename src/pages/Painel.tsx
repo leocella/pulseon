@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Monitor, Clock, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,17 +97,20 @@ export default function Painel() {
     lastTicketIdRef.current = currentTicket.id;
   }, [currentTicket, soundEnabled, hasUserInteracted, playAlertSound]);
 
-  // Convert database media items to MediaItem format
-  const mediaItems: MediaItem[] = dbMediaItems.length > 0
-    ? dbMediaItems
-      .filter(item => item.active)
-      .map(item => ({
-        type: item.type === 'external' ? 'image' : item.type as 'image' | 'video',
-        src: item.src,
-        alt: item.alt || '',
-        duration: item.duration,
-      }))
-    : defaultPanelMediaItems;
+  // Convert database media items to MediaItem format - memoized to prevent unnecessary re-renders
+  const mediaItems: MediaItem[] = useMemo(() => {
+    if (dbMediaItems.length > 0) {
+      return dbMediaItems
+        .filter(item => item.active)
+        .map(item => ({
+          type: item.type as 'image' | 'video' | 'external',
+          src: item.src,
+          alt: item.alt || '',
+          duration: item.duration,
+        }));
+    }
+    return defaultPanelMediaItems;
+  }, [dbMediaItems]);
 
   // Update clock every second
   useEffect(() => {

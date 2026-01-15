@@ -29,6 +29,9 @@ export function usePanelMedia() {
       if (error) throw error;
       return (data || []) as unknown as PanelMediaItem[];
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch on focus
   });
 }
 

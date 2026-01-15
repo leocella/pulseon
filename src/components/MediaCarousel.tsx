@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +50,13 @@ export function MediaCarousel({
 }: MediaCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const itemsLengthRef = useRef(items.length);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update ref when items length changes
+  useEffect(() => {
+    itemsLengthRef.current = items.length;
+  }, [items.length]);
 
   // Reset index if it's out of bounds when items change
   useEffect(() => {
@@ -59,37 +66,54 @@ export function MediaCarousel({
   }, [items.length, currentIndex]);
 
   const goToNext = useCallback(() => {
-    if (items.length === 0) return;
-    setCurrentIndex((prev) => (prev + 1) % items.length);
+    const length = itemsLengthRef.current;
+    if (length === 0) return;
+    setCurrentIndex((prev) => (prev + 1) % length);
     setIsVideoPlaying(false);
-  }, [items.length]);
+  }, []);
 
   const goToPrev = useCallback(() => {
-    if (items.length === 0) return;
-    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+    const length = itemsLengthRef.current;
+    if (length === 0) return;
+    setCurrentIndex((prev) => (prev - 1 + length) % length);
     setIsVideoPlaying(false);
-  }, [items.length]);
+  }, []);
 
-  // Auto-advance for all media types
+  // Auto-advance for all media types using interval
   useEffect(() => {
     if (!autoPlay || items.length <= 1) return;
 
     const currentItem = items[currentIndex];
     if (!currentItem) return;
 
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
     // For native videos that are playing, let them finish naturally
     // But also set a maximum timeout to prevent getting stuck
     if (currentItem.type === 'video' && isVideoPlaying) {
-      // Set a maximum timeout of 60 seconds for videos
-      const maxVideoTimeout = setTimeout(goToNext, 60000);
-      return () => clearTimeout(maxVideoTimeout);
+      timerRef.current = setTimeout(goToNext, 60000);
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
     }
 
     const duration = (currentItem.duration || 8) * 1000;
-    const timer = setTimeout(goToNext, duration);
+    console.log(`MediaCarousel: Setting timer for ${duration}ms, item ${currentIndex + 1}/${items.length}`);
+    
+    timerRef.current = setTimeout(() => {
+      console.log(`MediaCarousel: Timer fired, advancing from ${currentIndex}`);
+      goToNext();
+    }, duration);
 
-    return () => clearTimeout(timer);
-  }, [currentIndex, items, autoPlay, goToNext, isVideoPlaying]);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [currentIndex, autoPlay, goToNext, isVideoPlaying, items.length]);
 
   // Early return if no items
   if (items.length === 0) {
