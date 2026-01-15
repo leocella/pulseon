@@ -156,23 +156,19 @@ export function BackgroundMusicPlayer() {
         playAudio();
     }, [audioElement, config.enabled, hasInteracted, musicType]);
 
-    // Renderizar iframe do Spotify - VISÍVEL para permitir interação do usuário
+    // Renderizar iframe do Spotify - posicionado no header do painel
     // Spotify NÃO permite autoplay sem interação direta no player
     if (config.enabled && musicType === 'spotify' && spotifyEmbedUrl) {
         return (
             <div
+                id="spotify-player-container"
                 style={{
-                    position: 'fixed',
-                    bottom: '12px',
-                    left: '12px',
-                    width: '200px',
+                    width: '300px',
                     height: '80px',
-                    zIndex: 50,
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     overflow: 'hidden',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
-                    transform: 'scale(0.85)',
-                    transformOrigin: 'bottom left',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    flexShrink: 0,
                 }}
             >
                 <iframe
