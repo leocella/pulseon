@@ -67,9 +67,11 @@ export default function Totem() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex flex-col items-center justify-center p-6">
       {/* Header */}
       <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-6">
-          <Ticket className="w-10 h-10 text-primary" />
-        </div>
+        <img 
+          src="/biocenter-logo.jpg" 
+          alt="Biocenter Logo" 
+          className="h-24 md:h-32 mx-auto mb-6 object-contain"
+        />
         <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
           Retire sua Senha
         </h1>
