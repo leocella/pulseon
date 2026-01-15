@@ -18,7 +18,7 @@ export function TicketNumber({
     md: 'text-2xl',
     lg: 'text-4xl',
     xl: 'text-6xl',
-    '2xl': 'text-7xl md:text-8xl',
+    '2xl': 'text-6xl md:text-7xl',
     '3xl': 'text-8xl md:text-9xl',
   };
 
