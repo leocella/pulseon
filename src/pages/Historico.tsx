@@ -48,6 +48,7 @@ export default function Historico() {
     atendente: atendente || undefined,
     page,
     pageSize: PAGE_SIZE,
+    unidade: UNIDADE,
   });
 
   const tickets = data?.tickets || [];
