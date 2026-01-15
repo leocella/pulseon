@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Monitor, Clock, ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { Monitor, Clock, ChevronRight, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useCurrentTicket, useWaitingTickets } from '@/hooks/useQueue';
@@ -19,9 +19,10 @@ export default function Painel() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const lastTicketIdRef = useRef<string | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-  
+
   const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket();
   const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(3);
   const { data: dbMediaItems = [] } = usePanelMedia();
@@ -78,6 +79,30 @@ export default function Painel() {
     // Play a test sound to confirm it works
     playAlertSound();
   }, [initAudioContext, playAlertSound]);
+
+  // Toggle fullscreen mode
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.log('Fullscreen não disponível:', err);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Play alert sound when a new ticket is called
   useEffect(() => {
@@ -166,10 +191,25 @@ export default function Painel() {
             </Button>
           )}
 
+          {/* Fullscreen Toggle */}
+          <Button
+            onClick={toggleFullscreen}
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
+            title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          >
+            {isFullscreen ? (
+              <Minimize className="w-4 h-4 sm:w-5 sm:h-5" />
+            ) : (
+              <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />
+            )}
+          </Button>
+
           <div className="hidden sm:block">
             <WeatherWidget />
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-3 text-white">
             <Clock className="w-4 h-4 sm:w-6 sm:h-6 opacity-90" />
             <div className="text-right">
@@ -184,10 +224,10 @@ export default function Painel() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6">
+      {/* Main Content - Layout otimizado para TV */}
+      <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-4">
         {/* Current Ticket - First on mobile */}
-        <div className="order-1 lg:order-2 lg:col-span-4 xl:col-span-3">
+        <div className="order-1 lg:order-2 lg:col-span-3 xl:col-span-2">
           <Card className="h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-card min-h-[200px] sm:min-h-0">
             {loadingCurrent ? (
               <div className="animate-pulse">
@@ -228,9 +268,9 @@ export default function Painel() {
           </Card>
         </div>
 
-        {/* Next Tickets - Second on mobile */}
-        <div className="order-2 lg:order-3 lg:col-span-3">
-          <Card className="h-full p-4 sm:p-5 bg-card">
+        {/* Next Tickets - Coluna menor para dar espaço ao carrossel */}
+        <div className="order-2 lg:order-3 lg:col-span-2">
+          <Card className="h-full p-3 sm:p-4 bg-card">
             <h2 className="text-base sm:text-lg font-bold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4 text-primary" />
               Próximas Senhas
@@ -272,12 +312,12 @@ export default function Painel() {
           </Card>
         </div>
 
-        {/* Media Carousel - Last on mobile, first on desktop */}
-        <div className="order-3 lg:order-1 lg:col-span-5 xl:col-span-6">
+        {/* Media Carousel - Ocupa mais espaço para destaque na TV */}
+        <div className="order-3 lg:order-1 lg:col-span-7 xl:col-span-8">
           <MediaCarousel
             items={mediaItems}
             autoPlay
-            className="h-[50vh] sm:h-[60vh] lg:h-full lg:min-h-0"
+            className="h-[50vh] sm:h-[60vh] lg:h-full lg:min-h-0 aspect-video"
           />
         </div>
       </div>
