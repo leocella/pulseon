@@ -62,6 +62,15 @@ export function useAuth() {
 
     const fetchUserRoles = async (userId: string) => {
         try {
+            // Ensure session is fully propagated before querying
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) {
+                console.error('No session when fetching roles');
+                setRoles([]);
+                setLoading(false);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from('user_roles')
                 .select('role, unidade')
@@ -70,6 +79,7 @@ export function useAuth() {
             if (error) {
                 console.error('Error fetching roles:', error);
             } else {
+                console.log('Roles fetched:', data);
                 setRoles(data as UserRole[] || []);
             }
         } catch (error) {
