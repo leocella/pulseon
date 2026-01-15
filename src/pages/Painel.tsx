@@ -146,21 +146,21 @@ export default function Painel() {
     return () => clearInterval(interval);
   }, []);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col">
+    <div className="h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col overflow-hidden">
       {/* Background Music Player */}
       <BackgroundMusicPlayer />
 
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-primary to-primary/80 border-b border-primary/20 gap-3 sm:gap-0">
+      {/* Header - Compacto para TV */}
+      <header className="shrink-0 flex items-center justify-between px-4 py-2 bg-gradient-to-r from-primary to-primary/80 border-b border-primary/20">
         {/* Logo */}
         <div className="flex items-center gap-3 sm:gap-4">
           <img
             src="/biocenter-logo.jpg"
             alt="Laboratório Biocenter"
-            className="h-10 sm:h-16 w-auto rounded-lg shadow-lg"
+            className="h-12 w-auto rounded-lg shadow-lg"
           />
           <div className="text-white">
-            <span className="text-lg sm:text-2xl font-bold block">Laboratório Biocenter</span>
+            <span className="text-xl font-bold block">Laboratório Biocenter</span>
             <span className="text-xs sm:text-sm opacity-90 hidden sm:block">Sempre ao seu lado</span>
           </div>
         </div>
@@ -228,25 +228,25 @@ export default function Painel() {
         </div>
       </header>
 
-      {/* Main Content - Layout TV: Carrossel à esquerda, Info à direita */}
-      <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-4 overflow-hidden">
+      {/* Main Content - Layout TV fixo sem scroll */}
+      <div className="flex-1 p-2 grid grid-cols-12 gap-3 overflow-hidden min-h-0">
 
         {/* Media Carousel - Lado esquerdo, ocupa maior parte */}
-        <div className="order-2 lg:order-1 lg:col-span-8 h-full">
+        <div className="col-span-8 min-h-0">
           <MediaCarousel
             items={mediaItems}
             autoPlay
-            className="h-[40vh] sm:h-[50vh] lg:h-full rounded-xl"
+            className="h-full rounded-xl"
           />
         </div>
 
         {/* Coluna Direita: Senha Atual + Histórico */}
-        <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-2 sm:gap-4 h-full overflow-hidden">
+        <div className="col-span-4 flex flex-col gap-2 min-h-0 overflow-hidden">
 
           {/* Senha Atual - Atendendo Agora */}
-          <Card className={`p-5 sm:p-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${currentTicket?.status === 'chamado' ? 'animate-card-glow border-primary/50' : ''
+          <Card className={`shrink-0 p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${currentTicket?.status === 'chamado' ? 'animate-card-glow border-primary/50' : ''
             }`}>
-            <h2 className="text-lg sm:text-xl font-bold text-primary mb-6 text-center">
+            <h2 className="text-lg font-bold text-primary mb-3 text-center">
               Atendendo Agora
             </h2>
 
@@ -290,8 +290,8 @@ export default function Painel() {
           </Card>
 
           {/* Histórico de Senhas Chamadas */}
-          <Card className="flex-1 p-3 sm:p-4 bg-card overflow-hidden flex flex-col">
-            <h2 className="text-base sm:text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+          <Card className="flex-1 p-3 bg-card overflow-hidden flex flex-col min-h-0">
+            <h2 className="shrink-0 text-base font-bold text-foreground mb-2 flex items-center gap-2">
               <History className="w-4 h-4 text-primary" />
               Últimas Chamadas
             </h2>
