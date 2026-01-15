@@ -27,7 +27,7 @@ export function usePanelMedia() {
         .order('order_index', { ascending: true });
 
       if (error) throw error;
-      return (data || []) as PanelMediaItem[];
+      return (data || []) as unknown as PanelMediaItem[];
     },
   });
 }
@@ -84,7 +84,7 @@ export function useUploadMedia() {
         .limit(1)
         .maybeSingle();
 
-      const nextOrder = (maxOrderData?.order_index || 0) + 1;
+      const nextOrder = ((maxOrderData as unknown as { order_index: number })?.order_index || 0) + 1;
 
       // Insert media record
       const { data, error } = await supabase
@@ -102,7 +102,7 @@ export function useUploadMedia() {
         .single();
 
       if (error) throw error;
-      return data as PanelMediaItem;
+      return data as unknown as PanelMediaItem;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panelMedia'] });
@@ -140,7 +140,7 @@ export function useUpdateMedia() {
         .single();
 
       if (error) throw error;
-      return data as PanelMediaItem;
+      return data as unknown as PanelMediaItem;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panelMedia'] });
