@@ -14,13 +14,17 @@ export function TicketBadge({ tipo, size = 'md' }: TicketBadgeProps) {
     xl: 'text-lg px-5 py-2',
   };
 
+  const typeStyles: Record<TipoAtendimento, string> = {
+    Normal: 'bg-normal text-normal-foreground',
+    Preferencial: 'bg-preferencial text-preferencial-foreground',
+    'Retirada de Laudo': 'bg-laudo text-laudo-foreground',
+  };
+
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-full font-semibold uppercase tracking-wide',
-        tipo === 'Preferencial' 
-          ? 'bg-preferencial text-preferencial-foreground' 
-          : 'bg-normal text-normal-foreground',
+        typeStyles[tipo],
         sizeClasses[size]
       )}
     >

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ticket, UserCheck, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Ticket, UserCheck, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useGenerateTicket } from '@/hooks/useQueue';
@@ -27,9 +27,9 @@ export default function Totem() {
 
     try {
       const result = await generateTicket.mutateAsync(tipo);
-      
+
       setGeneratedTicket({ id_senha: result.id_senha, tipo });
-      
+
       // Try to print
       const printed = await printTicket({
         senha: result.ticket_id,
@@ -55,7 +55,7 @@ export default function Totem() {
       console.error('Error generating ticket:', error);
       setState('error');
       setErrorMessage('Erro ao gerar senha. Por favor, tente novamente.');
-      
+
       setTimeout(() => {
         setState('idle');
         setErrorMessage('');
@@ -80,7 +80,7 @@ export default function Totem() {
 
       {/* Main Content */}
       {state === 'idle' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full animate-slide-up">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl w-full animate-slide-up">
           {/* Normal Button */}
           <Button
             onClick={() => handleGenerateTicket('Normal')}
@@ -108,6 +108,20 @@ export default function Totem() {
               Idosos, gestantes, PCD
             </span>
           </Button>
+
+          {/* Retirada de Laudo Button */}
+          <Button
+            onClick={() => handleGenerateTicket('Retirada de Laudo')}
+            className="h-64 md:h-80 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-laudo hover:bg-laudo/90 text-laudo-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <FileText className="w-10 h-10" />
+            </div>
+            <span>Retirada de Laudo</span>
+            <span className="text-lg font-normal opacity-80">
+              Resultados de exames
+            </span>
+          </Button>
         </div>
       )}
 
@@ -127,9 +141,9 @@ export default function Totem() {
           <CheckCircle className="w-16 h-16 mx-auto text-preferencial mb-8" />
           <p className="text-xl md:text-2xl text-muted-foreground mb-6">Sua senha é</p>
           <div className="my-8 py-4">
-            <TicketNumber 
-              number={generatedTicket.id_senha} 
-              size="3xl" 
+            <TicketNumber
+              number={generatedTicket.id_senha}
+              size="3xl"
               className="text-foreground block"
             />
           </div>

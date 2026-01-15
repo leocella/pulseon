@@ -1,10 +1,10 @@
-export type TipoAtendimento = 'Normal' | 'Preferencial';
+export type TipoAtendimento = 'Normal' | 'Preferencial' | 'Retirada de Laudo';
 
-export type StatusAtendimento = 
-  | 'aguardando' 
-  | 'chamado' 
-  | 'em_atendimento' 
-  | 'finalizado' 
+export type StatusAtendimento =
+  | 'aguardando'
+  | 'chamado'
+  | 'em_atendimento'
+  | 'finalizado'
   | 'nao_compareceu';
 
 export interface Ticket {

@@ -69,6 +69,10 @@ export default {
           DEFAULT: "hsl(var(--preferencial))",
           foreground: "hsl(var(--preferencial-foreground))",
         },
+        laudo: {
+          DEFAULT: "hsl(var(--laudo))",
+          foreground: "hsl(var(--laudo-foreground))",
+        },
         chamado: {
           DEFAULT: "hsl(var(--chamado))",
           foreground: "hsl(var(--chamado-foreground))",

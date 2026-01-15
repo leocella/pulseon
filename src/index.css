@@ -40,13 +40,20 @@
     --radius: 0.75rem;
 
     /* Custom colors for queue system - Paleta Laranja Biocenter */
-    --normal: 33 100% 50%; /* Laranja principal */
+    --normal: 33 100% 50%;
+    /* Laranja principal */
     --normal-foreground: 0 0% 100%;
-    --preferencial: 33 100% 40%; /* Laranja escuro */
+    --preferencial: 33 100% 40%;
+    /* Laranja escuro */
     --preferencial-foreground: 0 0% 100%;
-    --chamado: 33 100% 60%; /* Laranja claro */
+    --laudo: 200 100% 50%;
+    /* Azul para Laudos */
+    --laudo-foreground: 0 0% 100%;
+    --chamado: 33 100% 60%;
+    /* Laranja claro */
     --chamado-foreground: 33 100% 15%;
-    --atendimento: 33 100% 35%; /* Laranja mais escuro */
+    --atendimento: 33 100% 35%;
+    /* Laranja mais escuro */
     --atendimento-foreground: 0 0% 100%;
     --finalizado: 210 40% 70%;
     --nao-compareceu: 0 60% 50%;
@@ -95,7 +102,7 @@
     --border: 217 33% 17%;
     --input: 217 33% 17%;
     --ring: 212 27% 84%;
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -128,9 +135,12 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow: 0 0 0 0 hsl(var(--chamado) / 0.4);
     }
+
     50% {
       box-shadow: 0 0 0 20px hsl(var(--chamado) / 0);
     }
@@ -145,6 +155,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -155,6 +166,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -168,6 +180,7 @@
     from {
       width: 0%;
     }
+
     to {
       width: 100%;
     }

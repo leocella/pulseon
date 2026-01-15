@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Filter, 
-  Clock, 
+import {
+  ArrowLeft,
+  Calendar,
+  Filter,
+  Clock,
   Timer,
   ChevronLeft,
   ChevronRight
@@ -99,8 +99,8 @@ export default function Historico() {
 
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
-            <Select 
-              value={tipo} 
+            <Select
+              value={tipo}
               onValueChange={(value) => {
                 setTipo(value as TipoAtendimento | 'todos');
                 setPage(0);
@@ -113,6 +113,7 @@ export default function Historico() {
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="Normal">Normal</SelectItem>
                 <SelectItem value="Preferencial">Preferencial</SelectItem>
+                <SelectItem value="Retirada de Laudo">Retirada de Laudo</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -192,12 +193,12 @@ export default function Historico() {
                       {format(new Date(ticket.hora_emissao), 'HH:mm:ss')}
                     </TableCell>
                     <TableCell>
-                      {ticket.hora_chamada 
+                      {ticket.hora_chamada
                         ? format(new Date(ticket.hora_chamada), 'HH:mm:ss')
                         : '-'}
                     </TableCell>
                     <TableCell>
-                      {ticket.hora_finalizacao 
+                      {ticket.hora_finalizacao
                         ? format(new Date(ticket.hora_finalizacao), 'HH:mm:ss')
                         : '-'}
                     </TableCell>
