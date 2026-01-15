@@ -4,14 +4,16 @@ import { UNIDADE, POLLING_INTERVAL } from '@/lib/config';
 import type { Ticket, TipoAtendimento, StatusAtendimento } from '@/types/queue';
 
 // Fetch current called ticket
-export function useCurrentTicket() {
+export function useCurrentTicket(unidade?: string) {
+  const unit = unidade || UNIDADE;
+  
   return useQuery({
-    queryKey: ['currentTicket', UNIDADE],
+    queryKey: ['currentTicket', unit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('fila_atendimento')
         .select('*')
-        .eq('unidade', UNIDADE)
+        .eq('unidade', unit)
         .in('status', ['chamado', 'em_atendimento'])
         .order('hora_chamada', { ascending: false })
         .limit(1)
@@ -25,14 +27,16 @@ export function useCurrentTicket() {
 }
 
 // Fetch waiting tickets
-export function useWaitingTickets(limit?: number) {
+export function useWaitingTickets(limit?: number, unidade?: string) {
+  const unit = unidade || UNIDADE;
+  
   return useQuery({
-    queryKey: ['waitingTickets', UNIDADE, limit],
+    queryKey: ['waitingTickets', unit, limit],
     queryFn: async () => {
       let query = supabase
         .from('fila_atendimento')
         .select('*')
-        .eq('unidade', UNIDADE)
+        .eq('unidade', unit)
         .eq('status', 'aguardando')
         .order('tipo', { ascending: false }) // Preferencial first (P > N alphabetically desc)
         .order('hora_emissao', { ascending: true });
@@ -51,14 +55,16 @@ export function useWaitingTickets(limit?: number) {
 }
 
 // Fetch all active tickets (for secretary view)
-export function useActiveTickets() {
+export function useActiveTickets(unidade?: string) {
+  const unit = unidade || UNIDADE;
+  
   return useQuery({
-    queryKey: ['activeTickets', UNIDADE],
+    queryKey: ['activeTickets', unit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('fila_atendimento')
         .select('*')
-        .eq('unidade', UNIDADE)
+        .eq('unidade', unit)
         .in('status', ['aguardando', 'chamado', 'em_atendimento'])
         .order('hora_emissao', { ascending: true });
       
@@ -70,13 +76,14 @@ export function useActiveTickets() {
 }
 
 // Generate new ticket
-export function useGenerateTicket() {
+export function useGenerateTicket(unidade?: string) {
+  const unit = unidade || UNIDADE;
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (tipo: TipoAtendimento) => {
       const { data, error } = await supabase
-        .rpc('next_ticket', { p_unidade: UNIDADE, p_tipo: tipo as 'Normal' | 'Preferencial' });
+        .rpc('next_ticket', { p_unidade: unit, p_tipo: tipo as 'Normal' | 'Preferencial' });
       
       if (error) throw error;
       if (!data || data.length === 0) throw new Error('Falha ao gerar senha');
@@ -91,13 +98,14 @@ export function useGenerateTicket() {
 }
 
 // Call next ticket
-export function useCallNextTicket() {
+export function useCallNextTicket(unidade?: string) {
+  const unit = unidade || UNIDADE;
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
-        .rpc('call_next_ticket', { p_unidade: UNIDADE });
+        .rpc('call_next_ticket', { p_unidade: unit });
       
       if (error) throw error;
       if (!data || data.length === 0) return null;
@@ -162,16 +170,18 @@ export function useHistory(filters: {
   atendente?: string;
   page?: number;
   pageSize?: number;
+  unidade?: string;
 }) {
-  const { date, tipo, atendente, page = 0, pageSize = 50 } = filters;
+  const { date, tipo, atendente, page = 0, pageSize = 50, unidade } = filters;
+  const unit = unidade || UNIDADE;
   
   return useQuery({
-    queryKey: ['history', UNIDADE, date, tipo, atendente, page, pageSize],
+    queryKey: ['history', unit, date, tipo, atendente, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from('fila_atendimento')
         .select('*', { count: 'exact' })
-        .eq('unidade', UNIDADE)
+        .eq('unidade', unit)
         .order('hora_emissao', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
       
