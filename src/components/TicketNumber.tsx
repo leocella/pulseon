@@ -27,7 +27,7 @@ export function TicketNumber({
       className={cn(
         'ticket-number font-bold tracking-wider',
         sizeClasses[size],
-        animate && 'animate-pulse-glow rounded-2xl px-6 py-4 bg-chamado text-chamado-foreground',
+        animate && 'animate-pulse-glow rounded-2xl px-4 py-2 bg-chamado text-chamado-foreground',
         className
       )}
     >
