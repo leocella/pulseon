@@ -164,7 +164,7 @@ export function BackgroundMusicPlayer() {
                 style={{
                     position: 'fixed',
                     bottom: '16px',
-                    right: '16px',
+                    left: '16px',
                     width: '300px',
                     height: '80px',
                     zIndex: 50,
