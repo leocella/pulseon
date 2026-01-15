@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { UNIDADE } from '@/lib/config';
 
-// Configurações de música de fundo armazenadas em localStorage
-// para persistir entre sessões sem necessidade de banco de dados
+// Configurações de música de fundo sincronizadas via Supabase
+// Assim você configura no PC e a TV puxa automaticamente!
 
 export interface BackgroundMusicConfig {
     url: string;
@@ -9,7 +12,7 @@ export interface BackgroundMusicConfig {
     enabled: boolean;
 }
 
-const STORAGE_KEY = 'panel_background_music';
+const SETTING_KEY = 'background_music';
 
 const defaultConfig: BackgroundMusicConfig = {
     url: '',
@@ -19,6 +22,7 @@ const defaultConfig: BackgroundMusicConfig = {
 
 // Detecta o tipo de URL de música
 function getMusicType(url: string): 'spotify' | 'youtube' | 'audio' | 'unknown' {
+    if (!url) return 'unknown';
     if (url.includes('spotify.com')) return 'spotify';
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
     if (url.match(/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i) || url.includes('stream')) return 'audio';
@@ -27,11 +31,6 @@ function getMusicType(url: string): 'spotify' | 'youtube' | 'audio' | 'unknown' 
 
 // Converte URL do Spotify para embed
 function getSpotifyEmbedUrl(url: string): string | null {
-    // Formatos suportados:
-    // https://open.spotify.com/playlist/37i9dQZF1DX4WYpdgoIcn6
-    // https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy
-    // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
-
     const spotifyMatch = url.match(/spotify\.com\/(playlist|album|track)\/([a-zA-Z0-9]+)/);
     if (spotifyMatch) {
         const [, type, id] = spotifyMatch;
@@ -40,43 +39,74 @@ function getSpotifyEmbedUrl(url: string): string | null {
     return null;
 }
 
+// Hook para buscar e atualizar configurações de música de fundo
 export function useBackgroundMusic() {
-    const [config, setConfig] = useState<BackgroundMusicConfig>(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                return { ...defaultConfig, ...JSON.parse(stored) };
+    const queryClient = useQueryClient();
+
+    // Buscar configuração do banco de dados
+    const { data: dbConfig } = useQuery({
+        queryKey: ['panelSettings', UNIDADE, SETTING_KEY],
+        queryFn: async () => {
+            const { data, error } = await (supabase
+                .from('panel_settings' as any)
+                .select('setting_value')
+                .eq('unidade', UNIDADE)
+                .eq('setting_key', SETTING_KEY)
+                .maybeSingle() as any);
+
+            if (error) {
+                console.error('Error fetching music config:', error);
+                return null;
             }
-        } catch (e) {
-            console.error('Error loading background music config:', e);
-        }
-        return defaultConfig;
+            return data?.setting_value as BackgroundMusicConfig | null;
+        },
+        staleTime: 1000 * 60, // Cache por 1 minuto
     });
 
-    // Salvar no localStorage quando a config mudar
-    useEffect(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-        } catch (e) {
-            console.error('Error saving background music config:', e);
-        }
-    }, [config]);
+    // Config atual (do banco ou default)
+    const config: BackgroundMusicConfig = dbConfig || defaultConfig;
 
+    // Mutation para salvar configuração
+    const saveMutation = useMutation({
+        mutationFn: async (newConfig: BackgroundMusicConfig) => {
+            const { error } = await (supabase
+                .from('panel_settings' as any)
+                .upsert({
+                    unidade: UNIDADE,
+                    setting_key: SETTING_KEY,
+                    setting_value: newConfig,
+                }, {
+                    onConflict: 'unidade,setting_key',
+                }) as any);
+
+            if (error) throw error;
+            return newConfig;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['panelSettings', UNIDADE, SETTING_KEY] });
+        },
+    });
+
+    // Funções para atualizar configuração
     const setUrl = useCallback((url: string) => {
-        setConfig(prev => ({ ...prev, url }));
-    }, []);
+        const newConfig = { ...config, url };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
 
     const setVolume = useCallback((volume: number) => {
-        setConfig(prev => ({ ...prev, volume: Math.max(0, Math.min(1, volume)) }));
-    }, []);
+        const newConfig = { ...config, volume: Math.max(0, Math.min(1, volume)) };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
 
     const setEnabled = useCallback((enabled: boolean) => {
-        setConfig(prev => ({ ...prev, enabled }));
-    }, []);
+        const newConfig = { ...config, enabled };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
 
     const toggleEnabled = useCallback(() => {
-        setConfig(prev => ({ ...prev, enabled: !prev.enabled }));
-    }, []);
+        const newConfig = { ...config, enabled: !config.enabled };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
 
     const musicType = getMusicType(config.url);
 
@@ -88,6 +118,7 @@ export function useBackgroundMusic() {
         toggleEnabled,
         musicType,
         spotifyEmbedUrl: musicType === 'spotify' ? getSpotifyEmbedUrl(config.url) : null,
+        isSaving: saveMutation.isPending,
     };
 }
 
@@ -157,7 +188,6 @@ export function BackgroundMusicPlayer() {
     }, [audioElement, config.enabled, hasInteracted, musicType]);
 
     // Renderizar iframe do Spotify - posicionado no header do painel
-    // Spotify NÃO permite autoplay sem interação direta no player
     if (config.enabled && musicType === 'spotify' && spotifyEmbedUrl) {
         return (
             <div
@@ -185,7 +215,6 @@ export function BackgroundMusicPlayer() {
     }
 
     // Placeholder quando não há música configurada
-    // Mostra orientação para configurar
     if (!config.url || !config.enabled) {
         return (
             <div

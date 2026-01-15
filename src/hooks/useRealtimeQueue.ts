@@ -9,7 +9,7 @@ export function useRealtimeQueue(unidade?: string) {
 
   useEffect(() => {
     console.log('useRealtimeQueue: Subscribing to realtime for unit:', unit);
-    
+
     const channel = supabase
       .channel(`queue-changes-${unit}`)
       .on(
@@ -53,10 +53,31 @@ export function useRealtimeQueue(unidade?: string) {
         console.log('Realtime media subscription status:', status);
       });
 
+    // Canal para configurações do painel (música de fundo, etc)
+    const channelSettings = supabase
+      .channel(`settings-changes-${unit}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'panel_settings',
+          filter: `unidade=eq.${unit}`,
+        },
+        (payload) => {
+          console.log('Realtime settings update received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['panelSettings'] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('Realtime settings subscription status:', status);
+      });
+
     return () => {
       console.log('useRealtimeQueue: Unsubscribing from realtime');
       supabase.removeChannel(channel);
       supabase.removeChannel(channelMedia);
+      supabase.removeChannel(channelSettings);
     };
   }, [queryClient, unit]);
 }
