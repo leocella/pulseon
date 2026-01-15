@@ -53,6 +53,45 @@ export type Database = {
         }
         Relationships: []
       }
+      panel_media: {
+        Row: {
+          active: boolean
+          alt: string | null
+          created_at: string
+          duration: number
+          id: string
+          order_index: number
+          src: string
+          type: string
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          alt?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          order_index?: number
+          src: string
+          type: string
+          unidade: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          alt?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          order_index?: number
+          src?: string
+          type?: string
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sequencia_senhas: {
         Row: {
           data_referencia: string
