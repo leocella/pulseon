@@ -129,6 +129,7 @@ export function MediaCarousel({
             src={currentItem.src}
             alt={currentItem.alt || 'Slide'}
             className="w-full h-full object-contain animate-fade-in"
+            style={{ objectFit: 'contain' }}
           />
         ) : currentItem.type === 'external' ? (
           <iframe
@@ -143,6 +144,7 @@ export function MediaCarousel({
             key={currentIndex}
             src={currentItem.src}
             className="w-full h-full object-contain"
+            style={{ objectFit: 'contain' }}
             autoPlay
             muted
             playsInline
