@@ -163,14 +163,16 @@ export function BackgroundMusicPlayer() {
             <div
                 style={{
                     position: 'fixed',
-                    bottom: '16px',
-                    left: '16px',
-                    width: '300px',
+                    bottom: '12px',
+                    left: '12px',
+                    width: '200px',
                     height: '80px',
                     zIndex: 50,
-                    borderRadius: '12px',
+                    borderRadius: '8px',
                     overflow: 'hidden',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
+                    transform: 'scale(0.85)',
+                    transformOrigin: 'bottom left',
                 }}
             >
                 <iframe
