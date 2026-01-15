@@ -219,14 +219,14 @@ export function useHistory(filters: {
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (date) {
-        const startDate = new Date(date);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(date);
-        endDate.setHours(23, 59, 59, 999);
+        // Use date strings directly to avoid timezone conversion issues
+        // The date parameter is in YYYY-MM-DD format
+        const startDate = `${date}T00:00:00`;
+        const endDate = `${date}T23:59:59`;
 
         query = query
-          .gte('hora_emissao', startDate.toISOString())
-          .lte('hora_emissao', endDate.toISOString());
+          .gte('hora_emissao', startDate)
+          .lte('hora_emissao', endDate);
       }
 
       if (tipo) {
