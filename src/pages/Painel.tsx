@@ -240,8 +240,8 @@ export default function Painel() {
         <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-2 sm:gap-4 h-full overflow-hidden">
 
           {/* Senha Atual - Atendendo Agora */}
-          <Card className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-            <h2 className="text-lg sm:text-xl font-bold text-primary mb-3 text-center">
+          <Card className="p-4 sm:p-6 pt-5 sm:pt-7 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 overflow-visible">
+            <h2 className="text-lg sm:text-xl font-bold text-primary mb-3 text-center whitespace-nowrap">
               Atendendo Agora
             </h2>
 
