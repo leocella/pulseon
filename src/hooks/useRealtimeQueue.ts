@@ -22,6 +22,8 @@ export function useRealtimeQueue() {
           queryClient.invalidateQueries({ queryKey: ['currentTicket'] });
           queryClient.invalidateQueries({ queryKey: ['waitingTickets'] });
           queryClient.invalidateQueries({ queryKey: ['activeTickets'] });
+          queryClient.invalidateQueries({ queryKey: ['recentlyCalledTickets'] });
+          queryClient.invalidateQueries({ queryKey: ['history'] });
         }
       )
       .subscribe();
@@ -44,6 +46,7 @@ export function useRealtimeQueue() {
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(channelMedia);
     };
   }, [queryClient]);
 }
