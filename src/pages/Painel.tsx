@@ -240,10 +240,10 @@ export default function Painel() {
         <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-2 sm:gap-4 h-full overflow-hidden">
 
           {/* Senha Atual - Atendendo Agora */}
-          <Card className={`p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${
+          <Card className={`p-5 sm:p-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 transition-all duration-300 ${
             currentTicket?.status === 'chamado' ? 'animate-card-glow border-primary/50' : ''
           }`}>
-            <h2 className="text-lg sm:text-xl font-bold text-primary mb-4 text-center">
+            <h2 className="text-lg sm:text-xl font-bold text-primary mb-6 text-center">
               Atendendo Agora
             </h2>
 
@@ -252,22 +252,23 @@ export default function Painel() {
                 <div className="h-16 w-32 bg-muted rounded-xl" />
               </div>
             ) : currentTicket ? (
-              <div className={`text-center ${currentTicket.status === 'chamado' ? 'animate-attention' : 'animate-slide-up'}`}>
+              <div className={`text-center flex flex-col items-center gap-4 ${currentTicket.status === 'chamado' ? 'animate-attention' : 'animate-slide-up'}`}>
                 <TicketNumber
                   number={currentTicket.id_senha}
                   size="2xl"
                   animate={currentTicket.status === 'chamado'}
                   className={currentTicket.status !== 'chamado' ? 'text-atendimento' : ''}
                 />
-                <div className="mt-2 flex items-center justify-center gap-2">
-                  <TicketBadge tipo={currentTicket.tipo} size="md" />
-                </div>
+                
+                <TicketBadge tipo={currentTicket.tipo} size="md" />
+                
                 {currentTicket.atendente && (
-                  <div className="mt-3 text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1 inline-block">
+                  <div className="text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1.5">
                     {currentTicket.atendente}
                   </div>
                 )}
-                <div className={`mt-3 text-sm flex items-center justify-center gap-1 ${
+                
+                <div className={`text-sm flex items-center justify-center gap-1 ${
                   currentTicket.status === 'chamado' ? 'text-chamado font-bold animate-pulse' : 'text-muted-foreground'
                 }`}>
                   <ChevronRight className="w-4 h-4" />
@@ -279,8 +280,8 @@ export default function Painel() {
                 </div>
               </div>
             ) : (
-              <div className="text-center text-muted-foreground py-4">
-                <Monitor className="w-12 h-12 mx-auto mb-2 opacity-30" />
+              <div className="text-center text-muted-foreground py-6">
+                <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base">Aguardando chamada</p>
               </div>
             )}
