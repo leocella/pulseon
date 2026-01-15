@@ -15,32 +15,59 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     const location = useLocation();
 
     useEffect(() => {
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            if (session && requiredRole) {
-                checkUserRole(session.user.id, requiredRole);
-            } else if (session) {
-                setHasAccess(true);
-                setLoading(false);
-            } else {
-                setLoading(false);
-            }
-        });
+        setLoading(true);
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            if (session && requiredRole) {
-                checkUserRole(session.user.id, requiredRole);
-            } else if (session) {
-                setHasAccess(true);
-                setLoading(false);
-            } else {
+        // Listener FIRST (avoid missing auth events)
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            // Only synchronous state updates in callback
+            setSession(nextSession);
+
+            if (!nextSession) {
                 setHasAccess(false);
                 setLoading(false);
+                return;
             }
+
+            if (!requiredRole) {
+                setHasAccess(true);
+                setLoading(false);
+                return;
+            }
+
+            // Defer Supabase query to avoid auth deadlocks
+            setLoading(true);
+            setHasAccess(false);
+            setTimeout(() => {
+                checkUserRole(nextSession.user.id, requiredRole);
+            }, 0);
         });
+
+        // THEN check for existing session
+        supabase.auth
+            .getSession()
+            .then(({ data: { session: existingSession } }) => {
+                setSession(existingSession);
+
+                if (!existingSession) {
+                    setHasAccess(false);
+                    setLoading(false);
+                    return;
+                }
+
+                if (!requiredRole) {
+                    setHasAccess(true);
+                    setLoading(false);
+                    return;
+                }
+
+                checkUserRole(existingSession.user.id, requiredRole);
+            })
+            .catch(() => {
+                setHasAccess(false);
+                setLoading(false);
+            });
 
         return () => subscription.unsubscribe();
     }, [requiredRole]);
