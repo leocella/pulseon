@@ -184,6 +184,30 @@ export function BackgroundMusicPlayer() {
         );
     }
 
+    // Placeholder quando não há música configurada
+    // Mostra orientação para configurar
+    if (!config.url || !config.enabled) {
+        return (
+            <div
+                style={{
+                    width: '300px',
+                    height: '80px',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    border: '1px dashed rgba(255,255,255,0.3)',
+                }}
+            >
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', padding: '8px' }}>
+                    {!config.url ? '🎵 Configure música no Admin' : '🔇 Música desativada'}
+                </span>
+            </div>
+        );
+    }
+
     return null;
 }
 
