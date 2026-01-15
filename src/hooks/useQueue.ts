@@ -219,10 +219,13 @@ export function useHistory(filters: {
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (date) {
-        // Use date strings directly to avoid timezone conversion issues
-        // The date parameter is in YYYY-MM-DD format
-        const startDate = `${date}T00:00:00`;
-        const endDate = `${date}T23:59:59`;
+        // The date parameter is in YYYY-MM-DD format (local time)
+        // Database stores timestamps in UTC
+        // Brazil timezone is typically UTC-3, so we need to account for that
+        // When it's 00:00 in Brazil, it's 03:00 UTC
+        // When it's 23:59 in Brazil, it's 02:59 UTC next day
+        const startDate = `${date}T00:00:00-03:00`;
+        const endDate = `${date}T23:59:59-03:00`;
 
         query = query
           .gte('hora_emissao', startDate)
