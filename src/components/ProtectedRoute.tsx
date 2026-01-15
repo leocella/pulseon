@@ -47,17 +47,19 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
     const checkUserRole = async (userId: string, role: 'admin' | 'secretary') => {
         try {
+            const allowedRoles = role === 'admin' ? ['admin'] : ['admin', 'secretary'];
+            
             const { data, error } = await supabase
                 .from('user_roles')
                 .select('role')
-                .eq('user_id', userId)
-                .in('role', role === 'admin' ? ['admin'] : ['admin', 'secretary']);
+                .eq('user_id', userId);
 
             if (error) {
                 console.error('Error checking role:', error);
                 setHasAccess(false);
             } else {
-                setHasAccess(data && data.length > 0);
+                const userHasRole = data?.some(r => allowedRoles.includes(r.role)) ?? false;
+                setHasAccess(userHasRole);
             }
         } catch (error) {
             console.error('Error checking role:', error);
