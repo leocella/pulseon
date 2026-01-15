@@ -17,6 +17,29 @@ const defaultConfig: BackgroundMusicConfig = {
     enabled: true,
 };
 
+// Detecta o tipo de URL de música
+function getMusicType(url: string): 'spotify' | 'youtube' | 'audio' | 'unknown' {
+    if (url.includes('spotify.com')) return 'spotify';
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.match(/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i) || url.includes('stream')) return 'audio';
+    return 'unknown';
+}
+
+// Converte URL do Spotify para embed
+function getSpotifyEmbedUrl(url: string): string | null {
+    // Formatos suportados:
+    // https://open.spotify.com/playlist/37i9dQZF1DX4WYpdgoIcn6
+    // https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy
+    // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+
+    const spotifyMatch = url.match(/spotify\.com\/(playlist|album|track)\/([a-zA-Z0-9]+)/);
+    if (spotifyMatch) {
+        const [, type, id] = spotifyMatch;
+        return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+    }
+    return null;
+}
+
 export function useBackgroundMusic() {
     const [config, setConfig] = useState<BackgroundMusicConfig>(() => {
         try {
@@ -55,81 +78,24 @@ export function useBackgroundMusic() {
         setConfig(prev => ({ ...prev, enabled: !prev.enabled }));
     }, []);
 
+    const musicType = getMusicType(config.url);
+
     return {
         config,
         setUrl,
         setVolume,
         setEnabled,
         toggleEnabled,
+        musicType,
+        spotifyEmbedUrl: musicType === 'spotify' ? getSpotifyEmbedUrl(config.url) : null,
     };
 }
 
 // Componente de player de áudio para usar no Painel
 export function BackgroundMusicPlayer() {
-    const { config } = useBackgroundMusic();
+    const { config, musicType, spotifyEmbedUrl } = useBackgroundMusic();
     const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
     const [hasInteracted, setHasInteracted] = useState(false);
-
-    // Criar elemento de áudio
-    useEffect(() => {
-        if (!config.url || !config.enabled) {
-            if (audioElement) {
-                audioElement.pause();
-                audioElement.src = '';
-            }
-            setIsPlaying(false);
-            return;
-        }
-
-        const audio = new Audio();
-        audio.loop = true;
-        audio.volume = config.volume;
-
-        // Converte URLs do YouTube para aviso (não suporta direto)
-        if (config.url.includes('youtube.com') || config.url.includes('youtu.be')) {
-            console.warn('YouTube não suporta reprodução de áudio direto. Use um link de MP3 ou streaming.');
-            return;
-        }
-
-        // Converte URLs do Spotify para embed (nota: Spotify embed tem limitações)
-        let audioUrl = config.url;
-        if (config.url.includes('spotify.com')) {
-            console.warn('Spotify não permite reprodução direta de áudio. Use um link de MP3.');
-            return;
-        }
-
-        audio.src = audioUrl;
-        setAudioElement(audio);
-
-        return () => {
-            audio.pause();
-            audio.src = '';
-        };
-    }, [config.url, config.enabled]);
-
-    // Atualizar volume quando mudar
-    useEffect(() => {
-        if (audioElement) {
-            audioElement.volume = config.volume;
-        }
-    }, [audioElement, config.volume]);
-
-    // Tentar tocar quando o usuário interagir
-    useEffect(() => {
-        if (!audioElement || !config.enabled || !hasInteracted) return;
-
-        const playAudio = async () => {
-            try {
-                await audioElement.play();
-                setIsPlaying(true);
-            } catch (e) {
-                console.log('Autoplay bloqueado, aguardando interação do usuário');
-            }
-        };
-
-        playAudio();
-    }, [audioElement, config.enabled, hasInteracted]);
 
     // Listener global para detectar interação do usuário
     useEffect(() => {
@@ -146,6 +112,98 @@ export function BackgroundMusicPlayer() {
         };
     }, []);
 
-    // Este componente não renderiza nada visualmente
+    // Para áudio direto (MP3, etc)
+    useEffect(() => {
+        if (!config.url || !config.enabled || musicType !== 'audio') {
+            if (audioElement) {
+                audioElement.pause();
+                audioElement.src = '';
+            }
+            return;
+        }
+
+        const audio = new Audio();
+        audio.loop = true;
+        audio.volume = config.volume;
+        audio.src = config.url;
+        setAudioElement(audio);
+
+        return () => {
+            audio.pause();
+            audio.src = '';
+        };
+    }, [config.url, config.enabled, musicType]);
+
+    // Atualizar volume quando mudar
+    useEffect(() => {
+        if (audioElement) {
+            audioElement.volume = config.volume;
+        }
+    }, [audioElement, config.volume]);
+
+    // Tentar tocar quando o usuário interagir (para MP3)
+    useEffect(() => {
+        if (!audioElement || !config.enabled || !hasInteracted || musicType !== 'audio') return;
+
+        const playAudio = async () => {
+            try {
+                await audioElement.play();
+            } catch (e) {
+                console.log('Autoplay bloqueado, aguardando interação do usuário');
+            }
+        };
+
+        playAudio();
+    }, [audioElement, config.enabled, hasInteracted, musicType]);
+
+    // Renderizar iframe do Spotify (oculto visualmente mas funcional)
+    if (config.enabled && musicType === 'spotify' && spotifyEmbedUrl && hasInteracted) {
+        return (
+            <div
+                style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    right: 0,
+                    width: '300px',
+                    height: '80px',
+                    opacity: 0.01, // Quase invisível mas ainda funcional
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                }}
+            >
+                <iframe
+                    src={spotifyEmbedUrl}
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    title="Spotify Music Player"
+                />
+            </div>
+        );
+    }
+
     return null;
+}
+
+// Componente para preview do Spotify no Admin
+export function SpotifyPreview({ url }: { url: string }) {
+    const embedUrl = getSpotifyEmbedUrl(url);
+
+    if (!embedUrl) return null;
+
+    return (
+        <div className="rounded-lg overflow-hidden">
+            <iframe
+                src={embedUrl}
+                width="100%"
+                height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                title="Spotify Preview"
+            />
+        </div>
+    );
 }

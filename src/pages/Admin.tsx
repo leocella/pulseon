@@ -48,7 +48,7 @@ import { MediaCarousel } from '@/components/MediaCarousel';
 import { useAuth } from '@/hooks/useAuth';
 import type { MediaItem } from '@/components/MediaCarousel';
 import type { PanelMediaItem } from '@/hooks/usePanelMedia';
-import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
+import { useBackgroundMusic, SpotifyPreview } from '@/hooks/useBackgroundMusic';
 
 type MediaType = 'image' | 'video' | 'external';
 
@@ -77,7 +77,7 @@ function AdminContent() {
     const updateMedia = useUpdateMedia();
 
     // Background music config
-    const { config: musicConfig, setUrl: setMusicUrl, setVolume: setMusicVolume, toggleEnabled: toggleMusic } = useBackgroundMusic();
+    const { config: musicConfig, setUrl: setMusicUrl, setVolume: setMusicVolume, toggleEnabled: toggleMusic, musicType } = useBackgroundMusic();
 
     // Validate file size
     const validateFileSize = (file: File): boolean => {
@@ -376,51 +376,82 @@ function AdminContent() {
 
                             {/* URL Input */}
                             <div className="space-y-2">
-                                <Label htmlFor="musicUrl">URL do Áudio (MP3)</Label>
+                                <Label htmlFor="musicUrl">URL da Música</Label>
                                 <Input
                                     id="musicUrl"
-                                    placeholder="https://exemplo.com/musica.mp3"
+                                    placeholder="https://open.spotify.com/playlist/..."
                                     value={musicConfig.url}
                                     onChange={(e) => setMusicUrl(e.target.value)}
                                     className="text-sm"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Cole a URL direta de um arquivo MP3 ou stream de áudio
-                                </p>
-                            </div>
-
-                            {/* Volume Control */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label className="flex items-center gap-2">
-                                        <Volume2 className="w-4 h-4" />
-                                        Volume: {Math.round(musicConfig.volume * 100)}%
-                                    </Label>
+                                <div className="text-xs text-muted-foreground space-y-1">
+                                    <p><strong>Spotify:</strong> Cole link de playlist, álbum ou faixa</p>
+                                    <p><strong>MP3:</strong> URL direta de arquivo de áudio</p>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={musicConfig.volume * 100}
-                                    onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
-                                    className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                                />
-                                <p className="text-xs text-muted-foreground text-center">
-                                    Volume baixo recomendado: 20-40%
-                                </p>
+
+                                {/* Tipo detectado */}
+                                {musicConfig.url && (
+                                    <div className={`text-xs px-2 py-1 rounded inline-block ${musicType === 'spotify' ? 'bg-green-500/20 text-green-600' :
+                                            musicType === 'audio' ? 'bg-blue-500/20 text-blue-600' :
+                                                'bg-yellow-500/20 text-yellow-600'
+                                        }`}>
+                                        {musicType === 'spotify' ? '✓ Spotify detectado' :
+                                            musicType === 'audio' ? '✓ Áudio MP3 detectado' :
+                                                '⚠ Tipo não reconhecido'}
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Preview audio if URL exists */}
+                            {/* Volume Control - Só para MP3, Spotify controla no próprio player */}
+                            {musicType === 'audio' && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="flex items-center gap-2">
+                                            <Volume2 className="w-4 h-4" />
+                                            Volume: {Math.round(musicConfig.volume * 100)}%
+                                        </Label>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={musicConfig.volume * 100}
+                                        onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                        className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                                    />
+                                    <p className="text-xs text-muted-foreground text-center">
+                                        Volume baixo recomendado: 20-40%
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Preview */}
                             {musicConfig.url && (
                                 <div className="pt-2 border-t">
-                                    <Label className="text-sm text-muted-foreground mb-2 block">Testar Áudio:</Label>
-                                    <audio
-                                        controls
-                                        src={musicConfig.url}
-                                        className="w-full h-10"
-                                        style={{ filter: 'grayscale(1)' }}
-                                    />
+                                    <Label className="text-sm text-muted-foreground mb-2 block">Preview:</Label>
+
+                                    {musicType === 'spotify' ? (
+                                        <SpotifyPreview url={musicConfig.url} />
+                                    ) : musicType === 'audio' ? (
+                                        <audio
+                                            controls
+                                            src={musicConfig.url}
+                                            className="w-full h-10"
+                                            style={{ filter: 'grayscale(0.5)' }}
+                                        />
+                                    ) : (
+                                        <p className="text-xs text-yellow-600">
+                                            URL não reconhecida. Use um link do Spotify ou MP3.
+                                        </p>
+                                    )}
                                 </div>
+                            )}
+
+                            {musicType === 'spotify' && (
+                                <p className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
+                                    💡 <strong>Dica:</strong> O Spotify toca automaticamente no painel.
+                                    Abra o Spotify no celular e controle volume/música por lá!
+                                </p>
                             )}
                         </div>
                     </Card>
