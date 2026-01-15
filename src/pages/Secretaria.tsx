@@ -129,16 +129,16 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const preferencialCount = waitingTickets.filter(t => t.tipo === 'Preferencial').length;
   const normalCount = waitingTickets.filter(t => t.tipo === 'Normal').length;
 
-  // Tela de Configuração Inicial (Login Simplificado)
+  // Tela de Identificação do Guichê/Atendente (após login)
   if (configMode) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <Card className="max-w-md w-full p-8 shadow-lg">
           <div className="text-center mb-8">
             <Users className="w-16 h-16 mx-auto text-primary mb-4" />
-            <h1 className="text-2xl font-bold text-foreground">Identificação</h1>
+            <h1 className="text-2xl font-bold text-foreground">Guichê / Atendente</h1>
             <p className="text-muted-foreground mt-2">
-              Como você quer ser identificado(a) neste guichê?
+              Você já está logado(a). Agora informe como seu guichê aparecerá no atendimento.
             </p>
           </div>
 
