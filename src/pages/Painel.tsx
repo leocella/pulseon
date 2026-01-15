@@ -147,26 +147,28 @@ export default function Painel() {
   }, []);
   return (
     <div className="h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col overflow-hidden">
-      {/* Background Music Player */}
-      <BackgroundMusicPlayer />
-
-      {/* Header - Compacto para TV */}
+      {/* Header - Layout com 3 colunas: Player | Logo+Nome | Controles */}
       <header className="shrink-0 flex items-center justify-between px-4 py-2 bg-gradient-to-r from-primary to-primary/80 border-b border-primary/20">
-        {/* Logo */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        {/* Coluna Esquerda: Player Spotify */}
+        <div className="flex items-center min-w-[300px]">
+          <BackgroundMusicPlayer />
+        </div>
+
+        {/* Coluna Central: Logo + Nome do Lab */}
+        <div className="flex items-center justify-center gap-4 flex-1">
           <img
             src="/biocenter-logo.jpg"
             alt="Laboratório Biocenter"
-            className="h-12 w-auto rounded-lg shadow-lg"
+            className="h-14 w-auto rounded-lg shadow-lg"
           />
-          <div className="text-white">
-            <span className="text-xl font-bold block">Laboratório Biocenter</span>
-            <span className="text-xs sm:text-sm opacity-90 hidden sm:block">Sempre ao seu lado</span>
+          <div className="text-white text-center">
+            <span className="text-2xl font-bold block tracking-wide">Laboratório Biocenter</span>
+            <span className="text-sm opacity-90 block">Sempre ao seu lado</span>
           </div>
         </div>
 
-        {/* Som, Clima e Relógio */}
-        <div className="flex items-center gap-3 sm:gap-6">
+        {/* Coluna Direita: Controles, Clima e Relógio */}
+        <div className="flex items-center gap-3 sm:gap-5 min-w-[300px] justify-end">
           {/* Sound Toggle */}
           {!hasUserInteracted ? (
             <Button
