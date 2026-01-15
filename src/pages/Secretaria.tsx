@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Phone,
   Play,
@@ -33,12 +33,32 @@ interface SecretariaPanelProps {
 function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const [atendente, setAtendente] = useState('');
   const [configMode, setConfigMode] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Restore attendant from localStorage on mount
+  useEffect(() => {
+    const savedAtendente = localStorage.getItem('atendente_nome');
+    if (savedAtendente) {
+      setAtendente(savedAtendente);
+      setConfigMode(false);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Only enable queries after initialization and when not in config mode
+  const shouldFetchCurrentTicket = isInitialized && !configMode && atendente.trim() !== '';
 
   // Hooks usando a unidade recebida via props e filtrando pelo atendente logado
-  const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket(unidade, atendente);
+  const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket(
+    shouldFetchCurrentTicket ? unidade : undefined, 
+    shouldFetchCurrentTicket ? atendente : undefined
+  );
 
   // waitingTickets: limit=undefined, unidade=unidade
-  const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(undefined, unidade);
+  const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(
+    undefined, 
+    isInitialized ? unidade : undefined
+  );
 
   const callNextTicket = useCallNextTicket(unidade);
   const updateStatus = useUpdateTicketStatus();
@@ -125,6 +145,15 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       toast.error('Erro ao marcar não compareceu');
     }
   };
+
+  // Show loading while initializing
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const preferencialCount = waitingTickets.filter(t => t.tipo === 'Preferencial').length;
   const normalCount = waitingTickets.filter(t => t.tipo === 'Normal').length;
