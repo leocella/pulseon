@@ -1,9 +1,34 @@
 import { useCallback, useRef, useEffect } from 'react';
 
+// Event emitter para coordenar áudio entre componentes
+type AudioEventCallback = () => void;
+const audioEventListeners: { onAlertStart: AudioEventCallback[]; onAlertEnd: AudioEventCallback[] } = {
+  onAlertStart: [],
+  onAlertEnd: [],
+};
+
+export function subscribeToAlertEvents(onStart: AudioEventCallback, onEnd: AudioEventCallback) {
+  audioEventListeners.onAlertStart.push(onStart);
+  audioEventListeners.onAlertEnd.push(onEnd);
+  
+  return () => {
+    audioEventListeners.onAlertStart = audioEventListeners.onAlertStart.filter(cb => cb !== onStart);
+    audioEventListeners.onAlertEnd = audioEventListeners.onAlertEnd.filter(cb => cb !== onEnd);
+  };
+}
+
+function emitAlertStart() {
+  audioEventListeners.onAlertStart.forEach(cb => cb());
+}
+
+function emitAlertEnd() {
+  audioEventListeners.onAlertEnd.forEach(cb => cb());
+}
+
 // Alert sound using Web Audio API - a pleasant chime
 export function useAlertSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
-  const isInitializedRef = useRef(false);
+  const isPlayingRef = useRef(false);
 
   // Initialize AudioContext on first user interaction or when needed
   const initAudioContext = useCallback(() => {
@@ -15,6 +40,8 @@ export function useAlertSound() {
 
   // Play a pleasant two-tone chime
   const playAlertSound = useCallback(() => {
+    if (isPlayingRef.current) return;
+    
     try {
       const audioContext = initAudioContext();
       
@@ -23,7 +50,12 @@ export function useAlertSound() {
         audioContext.resume();
       }
 
+      // Notify that alert is starting
+      isPlayingRef.current = true;
+      emitAlertStart();
+
       const now = audioContext.currentTime;
+      const alertDuration = 0.9; // Total duration of the alert sound
       
       // Create oscillator for first tone
       const osc1 = audioContext.createOscillator();
@@ -67,8 +99,16 @@ export function useAlertSound() {
       osc3.start(now + 0.3);
       osc3.stop(now + 0.9);
 
+      // Notify that alert ended after the sound finishes
+      setTimeout(() => {
+        isPlayingRef.current = false;
+        emitAlertEnd();
+      }, alertDuration * 1000 + 100); // Add small buffer
+
     } catch (error) {
       console.error('Error playing alert sound:', error);
+      isPlayingRef.current = false;
+      emitAlertEnd();
     }
   }, [initAudioContext]);
 

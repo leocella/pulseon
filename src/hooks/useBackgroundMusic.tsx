@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { UNIDADE } from '@/lib/config';
+import { subscribeToAlertEvents } from '@/hooks/useAlertSound';
 
 // Configurações de música de fundo sincronizadas via Supabase
 // Assim você configura no PC e a TV puxa automaticamente!
@@ -237,6 +238,45 @@ export function BackgroundMusicPlayer() {
     const [hasInteracted, setHasInteracted] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const wasPlayingBeforeAlertRef = useRef(false);
+    const audioElementRef = useRef<HTMLAudioElement | null>(null);
+
+    // Keep ref in sync with state
+    useEffect(() => {
+        audioElementRef.current = audioElement;
+    }, [audioElement]);
+
+    // Subscribe to alert events to pause/resume music
+    useEffect(() => {
+        const handleAlertStart = () => {
+            // Store if we were playing before the alert
+            if (audioElementRef.current && !audioElementRef.current.paused) {
+                wasPlayingBeforeAlertRef.current = true;
+                // Lower volume during alert instead of pausing
+                if (audioElementRef.current) {
+                    audioElementRef.current.volume = Math.max(0.05, config.volume * 0.2);
+                }
+            }
+        };
+
+        const handleAlertEnd = () => {
+            // Resume playing if we were playing before
+            if (wasPlayingBeforeAlertRef.current && audioElementRef.current) {
+                // Restore volume
+                audioElementRef.current.volume = config.volume;
+                // If somehow paused, resume
+                if (audioElementRef.current.paused) {
+                    audioElementRef.current.play().catch(e => {
+                        console.log('Could not resume music after alert:', e);
+                    });
+                }
+                wasPlayingBeforeAlertRef.current = false;
+            }
+        };
+
+        const unsubscribe = subscribeToAlertEvents(handleAlertStart, handleAlertEnd);
+        return unsubscribe;
+    }, [config.volume]);
 
     // Listener global para detectar interação do usuário
     useEffect(() => {
