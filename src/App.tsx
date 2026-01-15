@@ -9,7 +9,9 @@ import Painel from "./pages/Painel";
 import Secretaria from "./pages/Secretaria";
 import Historico from "./pages/Historico";
 import Admin from "./pages/Admin";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,9 +32,18 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/totem" element={<Totem />} />
           <Route path="/painel" element={<Painel />} />
-          <Route path="/secretaria" element={<Secretaria />} />
+          <Route path="/secretaria" element={
+            <ProtectedRoute requiredRole="secretary">
+              <Secretaria />
+            </ProtectedRoute>
+          } />
           <Route path="/historico" element={<Historico />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={
+            <ProtectedRoute requiredRole="admin">
+              <Admin />
+            </ProtectedRoute>
+          } />
+          <Route path="/login" element={<Login />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

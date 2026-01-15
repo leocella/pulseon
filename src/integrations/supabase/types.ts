@@ -116,6 +116,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          unidade: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          unidade?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          unidade?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -149,6 +173,17 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_atendimento"]
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_unit_access: {
+        Args: { _unidade: string; _user_id: string }
+        Returns: boolean
+      }
       next_ticket: {
         Args: {
           p_tipo: Database["public"]["Enums"]["tipo_atendimento"]
@@ -161,6 +196,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "secretary"
       status_atendimento:
         | "aguardando"
         | "chamado"
@@ -295,6 +331,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "secretary"],
       status_atendimento: [
         "aguardando",
         "chamado",
