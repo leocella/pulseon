@@ -53,14 +53,19 @@ export default function Index() {
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col items-center justify-center p-6">
       {/* Header */}
       <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-6">
-          <Ticket className="w-10 h-10 text-primary" />
-        </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
-          Sistema de Filas
+        <img
+          src="/biocenter-logo.jpg"
+          alt="Laboratório Biocenter"
+          className="h-24 md:h-32 mx-auto mb-6 rounded-lg shadow-lg object-contain"
+        />
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2">
+          Laboratório Biocenter
         </h1>
+        <p className="text-xl text-primary font-medium mb-3">
+          Sempre ao seu lado
+        </p>
         <p className="text-lg text-muted-foreground">
-          Gerenciamento de atendimento presencial
+          Sistema de Gerenciamento de Filas
         </p>
         <p className="text-sm text-muted-foreground mt-2">
           Unidade: {UNIDADE}
