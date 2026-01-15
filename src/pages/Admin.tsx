@@ -48,7 +48,7 @@ import { MediaCarousel } from '@/components/MediaCarousel';
 import { useAuth } from '@/hooks/useAuth';
 import type { MediaItem } from '@/components/MediaCarousel';
 import type { PanelMediaItem } from '@/hooks/usePanelMedia';
-import { useBackgroundMusic, SpotifyPreview } from '@/hooks/useBackgroundMusic';
+import { useBackgroundMusic, SpotifyPreview, RadioSelector, RADIO_STATIONS, getMusicType } from '@/hooks/useBackgroundMusic';
 
 type MediaType = 'image' | 'video' | 'external';
 
@@ -420,36 +420,78 @@ function AdminContent() {
                                 </Button>
                             </div>
 
-                            {/* URL Input */}
-                            <div className="space-y-2">
-                                <Label htmlFor="musicUrl">URL da Música</Label>
+                            {/* Radio Stations Selector - NOVA SEÇÃO */}
+                            <div className="space-y-3 pt-2 border-t">
+                                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                    <span className="text-lg">📻</span>
+                                    Rádios Online (Recomendado - Sem limite!)
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Diferente do Spotify, as rádios tocam músicas completas sem necessidade de conta Premium.
+                                </p>
+                                <div className="grid gap-2 max-h-64 overflow-y-auto pr-1">
+                                    {RADIO_STATIONS.map((station) => (
+                                        <button
+                                            key={station.id}
+                                            onClick={() => setMusicUrl(station.url)}
+                                            className={`text-left p-3 rounded-lg border transition-all ${
+                                                musicConfig.url === station.url
+                                                    ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                                                    : 'border-border bg-card hover:border-primary/50 hover:bg-muted/50'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xl flex-shrink-0">📻</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-sm truncate">{station.name}</div>
+                                                    <div className="text-xs text-muted-foreground truncate">{station.genre}</div>
+                                                    <div className="text-xs text-muted-foreground/70 truncate mt-0.5">{station.description}</div>
+                                                </div>
+                                                {musicConfig.url === station.url && (
+                                                    <span className="text-primary text-lg flex-shrink-0">✓</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Spotify/Custom URL Section */}
+                            <div className="space-y-2 pt-2 border-t">
+                                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                    <span className="text-lg">🎵</span>
+                                    Ou use URL personalizada
+                                </div>
                                 <Input
                                     id="musicUrl"
-                                    placeholder="https://open.spotify.com/playlist/..."
+                                    placeholder="https://open.spotify.com/playlist/... ou URL de áudio"
                                     value={musicConfig.url}
                                     onChange={(e) => setMusicUrl(e.target.value)}
                                     className="text-sm"
                                 />
                                 <div className="text-xs text-muted-foreground space-y-1">
-                                    <p><strong>Spotify:</strong> Cole link de playlist, álbum ou faixa</p>
+                                    <p><strong>Spotify:</strong> Cole link de playlist, álbum ou faixa (⚠️ só preview sem Premium)</p>
                                     <p><strong>MP3:</strong> URL direta de arquivo de áudio</p>
                                 </div>
 
                                 {/* Tipo detectado */}
                                 {musicConfig.url && (
-                                    <div className={`text-xs px-2 py-1 rounded inline-block ${musicType === 'spotify' ? 'bg-green-500/20 text-green-600' :
+                                    <div className={`text-xs px-2 py-1 rounded inline-block ${
+                                        musicType === 'spotify' ? 'bg-green-500/20 text-green-600' :
+                                        musicType === 'radio' ? 'bg-purple-500/20 text-purple-600' :
                                         musicType === 'audio' ? 'bg-blue-500/20 text-blue-600' :
-                                            'bg-yellow-500/20 text-yellow-600'
-                                        }`}>
+                                        'bg-yellow-500/20 text-yellow-600'
+                                    }`}>
                                         {musicType === 'spotify' ? '✓ Spotify detectado' :
-                                            musicType === 'audio' ? '✓ Áudio MP3 detectado' :
-                                                '⚠ Tipo não reconhecido'}
+                                         musicType === 'radio' ? '✓ Rádio online selecionada' :
+                                         musicType === 'audio' ? '✓ Áudio MP3 detectado' :
+                                         '⚠ Tipo não reconhecido'}
                                     </div>
                                 )}
                             </div>
 
-                            {/* Volume Control - Só para MP3, Spotify controla no próprio player */}
-                            {musicType === 'audio' && (
+                            {/* Volume Control - Para MP3 e Rádio */}
+                            {(musicType === 'audio' || musicType === 'radio') && (
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label className="flex items-center gap-2">
@@ -477,7 +519,25 @@ function AdminContent() {
                                     <Label className="text-sm text-muted-foreground mb-2 block">Preview:</Label>
 
                                     {musicType === 'spotify' ? (
-                                        <SpotifyPreview url={musicConfig.url} />
+                                        <>
+                                            <SpotifyPreview url={musicConfig.url} />
+                                            <p className="text-xs text-amber-600 mt-2 bg-amber-500/10 p-2 rounded">
+                                                ⚠️ Spotify só toca ~30 segundos sem conta Premium logada na TV. 
+                                                Recomendamos usar uma rádio online acima!
+                                            </p>
+                                        </>
+                                    ) : musicType === 'radio' ? (
+                                        <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 p-3 rounded-lg">
+                                            <div className="flex items-center gap-2 text-sm">
+                                                <span className="text-lg">📻</span>
+                                                <span className="font-medium">
+                                                    {RADIO_STATIONS.find(s => s.url === musicConfig.url)?.name || 'Rádio Online'}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Clique no botão ▶ no painel TV para iniciar a reprodução
+                                            </p>
+                                        </div>
                                     ) : musicType === 'audio' ? (
                                         <audio
                                             controls
@@ -487,10 +547,17 @@ function AdminContent() {
                                         />
                                     ) : (
                                         <p className="text-xs text-yellow-600">
-                                            URL não reconhecida. Use um link do Spotify ou MP3.
+                                            URL não reconhecida. Use uma rádio, Spotify ou link de MP3.
                                         </p>
                                     )}
                                 </div>
+                            )}
+
+                            {musicType === 'radio' && (
+                                <p className="text-xs text-muted-foreground bg-green-500/10 p-2 rounded border border-green-500/20">
+                                    ✅ <strong>Rádio selecionada!</strong> Atualiza automaticamente no painel TV.
+                                    A música toca sem interrupção 24/7.
+                                </p>
                             )}
 
                             {musicType === 'spotify' && (
