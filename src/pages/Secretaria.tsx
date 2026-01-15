@@ -19,19 +19,23 @@ import {
   useUpdateTicketStatus 
 } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
-import { UNIDADE } from '@/lib/config';
 import { TicketNumber } from '@/components/TicketNumber';
 import { TicketBadge, StatusBadge } from '@/components/TicketBadge';
+import { SecretariaAuth } from '@/components/SecretariaAuth';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
-export default function Secretaria() {
+interface SecretariaPanelProps {
+  unidade: string;
+}
+
+function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const [atendente, setAtendente] = useState('');
-  const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket();
-  const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets();
+  const { data: currentTicket, isLoading: loadingCurrent } = useCurrentTicket(unidade);
+  const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(undefined, unidade);
   
-  const callNextTicket = useCallNextTicket();
+  const callNextTicket = useCallNextTicket(unidade);
   const updateStatus = useUpdateTicketStatus();
   
   // Enable realtime updates
@@ -108,10 +112,10 @@ export default function Secretaria() {
   return (
     <div className="min-h-screen bg-background p-6">
       {/* Header */}
-      <header className="flex items-center justify-between mb-8">
+      <header className="flex items-center justify-between mb-8 mt-12">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Painel da Secretaria</h1>
-          <p className="text-muted-foreground">Unidade: {UNIDADE}</p>
+          <p className="text-muted-foreground">Unidade: {unidade}</p>
         </div>
         <Link to="/historico">
           <Button variant="outline">
@@ -306,5 +310,13 @@ export default function Secretaria() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Secretaria() {
+  return (
+    <SecretariaAuth>
+      {(unidade) => <SecretariaPanel unidade={unidade} />}
+    </SecretariaAuth>
   );
 }
