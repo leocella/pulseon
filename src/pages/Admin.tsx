@@ -90,7 +90,7 @@ function AdminContent() {
         return true;
     };
 
-    // Compress image (basic implementation)
+    // Compress image and rotate portrait to landscape
     const compressImage = async (file: File): Promise<File> => {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -101,27 +101,60 @@ function AdminContent() {
                     let width = img.width;
                     let height = img.height;
 
-                    // Max dimensions
+                    // Detectar se é retrato (mais alto que largo)
+                    const isPortrait = height > width;
+
+                    // Max dimensions para paisagem
                     const MAX_WIDTH = 1920;
                     const MAX_HEIGHT = 1080;
 
-                    if (width > height) {
+                    if (isPortrait) {
+                        // Rotacionar para paisagem: trocar largura/altura
+                        // Após rotação: nova largura = altura antiga, nova altura = largura antiga
+                        const rotatedWidth = height;
+                        const rotatedHeight = width;
+
+                        // Aplicar limites na imagem rotacionada
+                        let finalWidth = rotatedWidth;
+                        let finalHeight = rotatedHeight;
+
+                        if (finalWidth > MAX_WIDTH) {
+                            finalHeight *= MAX_WIDTH / finalWidth;
+                            finalWidth = MAX_WIDTH;
+                        }
+                        if (finalHeight > MAX_HEIGHT) {
+                            finalWidth *= MAX_HEIGHT / finalHeight;
+                            finalHeight = MAX_HEIGHT;
+                        }
+
+                        canvas.width = finalWidth;
+                        canvas.height = finalHeight;
+
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            // Rotacionar 90 graus no sentido horário
+                            ctx.translate(finalWidth / 2, finalHeight / 2);
+                            ctx.rotate(Math.PI / 2);
+                            // Desenhar a imagem centralizada (considerando a rotação)
+                            ctx.drawImage(img, -finalHeight / 2, -finalWidth / 2, finalHeight, finalWidth);
+                        }
+                    } else {
+                        // Já é paisagem, apenas redimensionar se necessário
                         if (width > MAX_WIDTH) {
                             height *= MAX_WIDTH / width;
                             width = MAX_WIDTH;
                         }
-                    } else {
                         if (height > MAX_HEIGHT) {
                             width *= MAX_HEIGHT / height;
                             height = MAX_HEIGHT;
                         }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(img, 0, 0, width, height);
                     }
-
-                    canvas.width = width;
-                    canvas.height = height;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, width, height);
 
                     canvas.toBlob(
                         (blob) => {
@@ -156,10 +189,23 @@ function AdminContent() {
 
         // Compress image if it's an image
         if (file.type.startsWith('image/')) {
-            toast.info('Comprimindo imagem...');
+            toast.info('Processando imagem...');
+
+            // Detectar se é retrato antes de comprimir
+            const isPortrait = await new Promise<boolean>((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(img.height > img.width);
+                img.src = URL.createObjectURL(file);
+            });
+
             const compressed = await compressImage(file);
             setSelectedFile(compressed);
-            toast.success('Imagem comprimida!');
+
+            if (isPortrait) {
+                toast.success('Imagem rotacionada para paisagem e comprimida!');
+            } else {
+                toast.success('Imagem comprimida!');
+            }
         } else if (file.type.startsWith('video/')) {
             // Create video preview
             const url = URL.createObjectURL(file);
@@ -392,8 +438,8 @@ function AdminContent() {
                                 {/* Tipo detectado */}
                                 {musicConfig.url && (
                                     <div className={`text-xs px-2 py-1 rounded inline-block ${musicType === 'spotify' ? 'bg-green-500/20 text-green-600' :
-                                            musicType === 'audio' ? 'bg-blue-500/20 text-blue-600' :
-                                                'bg-yellow-500/20 text-yellow-600'
+                                        musicType === 'audio' ? 'bg-blue-500/20 text-blue-600' :
+                                            'bg-yellow-500/20 text-yellow-600'
                                         }`}>
                                         {musicType === 'spotify' ? '✓ Spotify detectado' :
                                             musicType === 'audio' ? '✓ Áudio MP3 detectado' :
