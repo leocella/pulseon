@@ -132,18 +132,19 @@ export function useBackgroundMusic() {
 
             if (error) {
                 console.error('Error fetching music config:', error);
-                return null;
+                throw error; // Throw error to keep stale data instead of returning null
             }
             return data?.setting_value as BackgroundMusicConfig | null;
         },
-        staleTime: 1000 * 5, // Cache por 5 segundos apenas
-        refetchInterval: 1000 * 10, // Polling a cada 10 segundos como fallback
+        staleTime: 1000 * 60, // Cache for 1 minute
+        refetchInterval: 1000 * 30, // Poll every 30 seconds as fallback
+        retry: 3,
     });
 
     // Realtime: sincroniza instantaneamente quando configuração muda
     useEffect(() => {
         console.log('useBackgroundMusic: Subscribing to realtime for unit:', UNIDADE);
-        
+
         const channel = supabase
             .channel(`panel-settings-${UNIDADE}`)
             .on(
@@ -240,11 +241,21 @@ export function BackgroundMusicPlayer() {
     const [isLoading, setIsLoading] = useState(false);
     const wasPlayingBeforeAlertRef = useRef(false);
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
+    const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Keep ref in sync with state
     useEffect(() => {
         audioElementRef.current = audioElement;
     }, [audioElement]);
+
+    // Cleanup retry timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Subscribe to alert events to pause/resume music
     useEffect(() => {
@@ -296,7 +307,7 @@ export function BackgroundMusicPlayer() {
     // Para áudio direto (MP3, rádio, etc)
     useEffect(() => {
         const isAudioType = musicType === 'audio' || musicType === 'radio';
-        
+
         if (!config.url || !config.enabled || !isAudioType) {
             if (audioElement) {
                 audioElement.pause();
@@ -304,6 +315,7 @@ export function BackgroundMusicPlayer() {
                 setAudioElement(null);
             }
             setIsPlaying(false);
+            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
             return;
         }
 
@@ -311,23 +323,77 @@ export function BackgroundMusicPlayer() {
         audio.volume = config.volume;
         audio.src = config.url;
         audio.crossOrigin = 'anonymous';
-        
-        audio.onplay = () => setIsPlaying(true);
+        audio.preload = 'auto'; // Ensure preload
+
+        const tryToPlay = () => {
+            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+            audio.play().catch(e => {
+                console.log('Autoplay bloqueado ou erro ao tocar:', e);
+                setIsPlaying(false);
+                // Simple retry logic only for network/loading errors, not interaction errors
+                if (e.name !== 'NotAllowedError') {
+                    retryTimeoutRef.current = setTimeout(() => {
+                        console.log('Retrying playback...');
+                        audio.load();
+                        tryToPlay();
+                    }, 5000);
+                }
+            });
+        };
+
+        audio.onplay = () => {
+            setIsPlaying(true);
+            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+        };
         audio.onpause = () => setIsPlaying(false);
         audio.onwaiting = () => setIsLoading(true);
         audio.onplaying = () => setIsLoading(false);
-        audio.onerror = () => {
-            console.error('Erro ao carregar áudio:', config.url);
+
+        audio.onerror = (e) => {
+            console.error('Erro ao carregar áudio:', config.url, e);
             setIsLoading(false);
+            setIsPlaying(false);
+
+            // Auto reconnect on error
+            if (config.enabled) {
+                retryTimeoutRef.current = setTimeout(() => {
+                    console.log('Recovering from error, reloading stream...');
+                    audio.load();
+                    tryToPlay();
+                }, 5000);
+            }
         };
-        
+
+        // Handle stream end (should not happen for radio, but good for stability)
+        audio.onended = () => {
+            console.log('Stream ended unexpectedly');
+            setIsPlaying(false);
+            if (config.enabled) {
+                retryTimeoutRef.current = setTimeout(() => {
+                    console.log('Restarting stream...');
+                    audio.currentTime = 0;
+                    tryToPlay();
+                }, 3000);
+            }
+        };
+
         setAudioElement(audio);
+
+        // Initial play attempt
+        if (hasInteracted) {
+            tryToPlay();
+        }
 
         return () => {
             audio.pause();
             audio.src = '';
+            audio.onplay = null;
+            audio.onpause = null;
+            audio.onerror = null;
+            audio.onended = null;
+            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
         };
-    }, [config.url, config.enabled, musicType]);
+    }, [config.url, config.enabled, musicType]); // Intentionally not including hasInteracted to avoid full reset
 
     // Atualizar volume quando mudar
     useEffect(() => {
@@ -336,27 +402,19 @@ export function BackgroundMusicPlayer() {
         }
     }, [audioElement, config.volume]);
 
-    // Tentar tocar quando o usuário interagir
+    // Tentar tocar quando o usuário interagir (separado para não resetar o audio)
     useEffect(() => {
         const isAudioType = musicType === 'audio' || musicType === 'radio';
         if (!audioElement || !config.enabled || !hasInteracted || !isAudioType) return;
 
-        const playAudio = async () => {
-            try {
-                setIsLoading(true);
-                await audioElement.play();
-            } catch (e) {
-                console.log('Autoplay bloqueado, aguardando interação do usuário');
-                setIsLoading(false);
-            }
-        };
-
-        playAudio();
+        if (audioElement.paused) {
+            audioElement.play().catch(console.warn);
+        }
     }, [audioElement, config.enabled, hasInteracted, musicType]);
 
     const handlePlayPause = async () => {
         if (!audioElement) return;
-        
+
         if (isPlaying) {
             audioElement.pause();
         } else {
@@ -413,25 +471,25 @@ export function BackgroundMusicPlayer() {
                     )}
                 </button>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ 
-                        color: 'white', 
-                        fontSize: '13px', 
-                        fontWeight: 600, 
+                    <div style={{
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600,
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                     }}>
                         📻 {currentRadioStation?.name || 'Rádio Online'}
                     </div>
-                    <div style={{ 
-                        color: 'rgba(255,255,255,0.6)', 
+                    <div style={{
+                        color: 'rgba(255,255,255,0.6)',
                         fontSize: '11px',
                         marginTop: '2px',
                     }}>
                         {currentRadioStation?.genre || 'Stream de áudio'}
                     </div>
-                    <div style={{ 
-                        color: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.4)', 
+                    <div style={{
+                        color: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.4)',
                         fontSize: '10px',
                         marginTop: '4px',
                         display: 'flex',
@@ -530,11 +588,10 @@ export function RadioSelector({ onSelect, currentUrl }: { onSelect: (url: string
                     <button
                         key={station.id}
                         onClick={() => onSelect(station.url)}
-                        className={`text-left p-3 rounded-lg border transition-all ${
-                            currentUrl === station.url
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border bg-card hover:border-primary/50'
-                        }`}
+                        className={`text-left p-3 rounded-lg border transition-all ${currentUrl === station.url
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border bg-card hover:border-primary/50'
+                            }`}
                     >
                         <div className="flex items-center gap-2">
                             <span className="text-lg">📻</span>
