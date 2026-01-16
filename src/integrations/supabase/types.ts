@@ -119,6 +119,50 @@ export type Database = {
         }
         Relationships: []
       }
+      queue_events: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          guiche: string | null
+          id: string
+          metadata: Json | null
+          motivo: string | null
+          performed_by: string
+          ticket_id: string
+          unidade: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          guiche?: string | null
+          id?: string
+          metadata?: Json | null
+          motivo?: string | null
+          performed_by: string
+          ticket_id: string
+          unidade: string
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          guiche?: string | null
+          id?: string
+          metadata?: Json | null
+          motivo?: string | null
+          performed_by?: string
+          ticket_id?: string
+          unidade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "fila_atendimento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sequencia_senhas: {
         Row: {
           data_referencia: string
@@ -191,6 +235,28 @@ export type Database = {
               tipo: Database["public"]["Enums"]["tipo_atendimento"]
             }[]
           }
+      call_ticket_safe: {
+        Args: { p_atendente: string; p_guiche?: string; p_ticket_id: string }
+        Returns: {
+          message: string
+          success: boolean
+          ticket_data: Json
+        }[]
+      }
+      cancel_ticket: {
+        Args: { p_atendente: string; p_motivo?: string; p_ticket_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
+      finish_ticket: {
+        Args: { p_atendente: string; p_ticket_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
       get_next_to_call: {
         Args: { p_unidade: string }
         Returns: {
@@ -219,6 +285,27 @@ export type Database = {
         Returns: {
           id_senha: string
           ticket_id: string
+        }[]
+      }
+      recall_ticket: {
+        Args: { p_atendente: string; p_guiche?: string; p_ticket_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
+      skip_ticket: {
+        Args: { p_atendente: string; p_motivo: string; p_ticket_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
+      start_service_ticket: {
+        Args: { p_atendente: string; p_guiche?: string; p_ticket_id: string }
+        Returns: {
+          message: string
+          success: boolean
         }[]
       }
     }
