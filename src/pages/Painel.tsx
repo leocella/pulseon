@@ -151,7 +151,7 @@ export default function Painel() {
       <header className="shrink-0 flex items-center justify-between px-4 py-2 bg-gradient-to-r from-primary to-primary/80 border-b border-primary/20">
         {/* Coluna Esquerda: Player Spotify */}
         <div className="flex items-center min-w-[300px]">
-          <BackgroundMusicPlayer />
+          <BackgroundMusicPlayer hasUserInteracted={hasUserInteracted} />
         </div>
 
         {/* Coluna Central: Logo + Nome do Lab */}

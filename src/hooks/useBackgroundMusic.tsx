@@ -233,15 +233,23 @@ export function useBackgroundMusic() {
 }
 
 // Componente de player de áudio para usar no Painel
-export function BackgroundMusicPlayer() {
+export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }: { hasUserInteracted?: boolean }) {
     const { config, musicType, spotifyEmbedUrl, currentRadioStation } = useBackgroundMusic();
     const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isManuallyPaused, setIsManuallyPaused] = useState(false); // Track user intent
     const wasPlayingBeforeAlertRef = useRef(false);
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
     const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Sync with parent interaction state
+    useEffect(() => {
+        if (parentHasInteracted) {
+            setHasInteracted(true);
+        }
+    }, [parentHasInteracted]);
 
     // Keep ref in sync with state
     useEffect(() => {
@@ -275,8 +283,8 @@ export function BackgroundMusicPlayer() {
             if (wasPlayingBeforeAlertRef.current && audioElementRef.current) {
                 // Restore volume
                 audioElementRef.current.volume = config.volume;
-                // If somehow paused, resume
-                if (audioElementRef.current.paused) {
+                // If somehow paused and we didn't manually pause, resume
+                if (audioElementRef.current.paused && !isManuallyPaused) {
                     audioElementRef.current.play().catch(e => {
                         console.log('Could not resume music after alert:', e);
                     });
@@ -285,9 +293,9 @@ export function BackgroundMusicPlayer() {
             }
         };
 
-        const unsubscribe = subscribeToAlertEvents(handleAlertStart, handleAlertEnd);
-        return unsubscribe;
-    }, [config.volume]);
+        const subscribe = subscribeToAlertEvents(handleAlertStart, handleAlertEnd);
+        return subscribe;
+    }, [config.volume, isManuallyPaused]);
 
     // Listener global para detectar interação do usuário
     useEffect(() => {
@@ -327,27 +335,58 @@ export function BackgroundMusicPlayer() {
 
         const tryToPlay = () => {
             if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-            audio.play().catch(e => {
-                console.log('Autoplay bloqueado ou erro ao tocar:', e);
-                setIsPlaying(false);
-                // Simple retry logic only for network/loading errors, not interaction errors
-                if (e.name !== 'NotAllowedError') {
-                    retryTimeoutRef.current = setTimeout(() => {
-                        console.log('Retrying playback...');
-                        audio.load();
-                        tryToPlay();
-                    }, 5000);
-                }
-            });
+
+            // Don't play if manually paused
+            if (isManuallyPaused) return;
+
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.log('Autoplay bloqueado ou erro ao tocar:', e);
+                    setIsPlaying(false);
+                    // Simple retry logic only for network/loading errors, not interaction errors
+                    if (e.name !== 'NotAllowedError') {
+                        retryTimeoutRef.current = setTimeout(() => {
+                            console.log('Retrying playback...');
+                            if (!isManuallyPaused) {
+                                audio.load();
+                                tryToPlay();
+                            }
+                        }, 5000);
+                    }
+                });
+            }
         };
 
         audio.onplay = () => {
             setIsPlaying(true);
             if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
         };
-        audio.onpause = () => setIsPlaying(false);
+
+        audio.onpause = () => {
+            setIsPlaying(false);
+            // We don't automatically retry here to avoid loops if user paused
+            // The watchdog will handle unexpected pauses
+        };
+
         audio.onwaiting = () => setIsLoading(true);
         audio.onplaying = () => setIsLoading(false);
+
+        // Handle stalled (stream stops sending data)
+        audio.onstalled = () => {
+            console.warn('Audio stream stalled');
+            // If enabled and not manually paused, try to reload
+            if (config.enabled && !isManuallyPaused) {
+                setIsLoading(true);
+                // Try to recover
+                retryTimeoutRef.current = setTimeout(() => {
+                    console.log('Stall recovery: reloading...');
+                    audio.load();
+                    tryToPlay();
+                }, 3000);
+            }
+        };
 
         audio.onerror = (e) => {
             console.error('Erro ao carregar áudio:', config.url, e);
@@ -355,7 +394,7 @@ export function BackgroundMusicPlayer() {
             setIsPlaying(false);
 
             // Auto reconnect on error
-            if (config.enabled) {
+            if (config.enabled && !isManuallyPaused) {
                 retryTimeoutRef.current = setTimeout(() => {
                     console.log('Recovering from error, reloading stream...');
                     audio.load();
@@ -368,7 +407,7 @@ export function BackgroundMusicPlayer() {
         audio.onended = () => {
             console.log('Stream ended unexpectedly');
             setIsPlaying(false);
-            if (config.enabled) {
+            if (config.enabled && !isManuallyPaused) {
                 retryTimeoutRef.current = setTimeout(() => {
                     console.log('Restarting stream...');
                     audio.currentTime = 0;
@@ -380,7 +419,7 @@ export function BackgroundMusicPlayer() {
         setAudioElement(audio);
 
         // Initial play attempt
-        if (hasInteracted) {
+        if (hasInteracted && !isManuallyPaused) {
             tryToPlay();
         }
 
@@ -391,9 +430,25 @@ export function BackgroundMusicPlayer() {
             audio.onpause = null;
             audio.onerror = null;
             audio.onended = null;
+            audio.onstalled = null;
             if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
         };
     }, [config.url, config.enabled, musicType]); // Intentionally not including hasInteracted to avoid full reset
+
+    // Watchdog to restart playback if it stops unexpectedly
+    useEffect(() => {
+        if (!audioElement || !config.enabled || !hasInteracted || isManuallyPaused) return;
+
+        const watchdogInterval = setInterval(() => {
+            // If supposed to be playing but is paused
+            if (audioElement.paused && config.enabled && !isManuallyPaused) {
+                console.log('Watchdog: Audio paused unexpectedly, attempting to restart...');
+                audioElement.play().catch(e => console.warn('Watchdog resume failed:', e));
+            }
+        }, 5000); // Check every 5 seconds
+
+        return () => clearInterval(watchdogInterval);
+    }, [audioElement, config.enabled, hasInteracted, isManuallyPaused]);
 
     // Atualizar volume quando mudar
     useEffect(() => {
@@ -405,19 +460,21 @@ export function BackgroundMusicPlayer() {
     // Tentar tocar quando o usuário interagir (separado para não resetar o audio)
     useEffect(() => {
         const isAudioType = musicType === 'audio' || musicType === 'radio';
-        if (!audioElement || !config.enabled || !hasInteracted || !isAudioType) return;
+        if (!audioElement || !config.enabled || !hasInteracted || !isAudioType || isManuallyPaused) return;
 
         if (audioElement.paused) {
             audioElement.play().catch(console.warn);
         }
-    }, [audioElement, config.enabled, hasInteracted, musicType]);
+    }, [audioElement, config.enabled, hasInteracted, musicType, isManuallyPaused]);
 
     const handlePlayPause = async () => {
         if (!audioElement) return;
 
         if (isPlaying) {
+            setIsManuallyPaused(true);
             audioElement.pause();
         } else {
+            setIsManuallyPaused(false);
             try {
                 setIsLoading(true);
                 await audioElement.play();
