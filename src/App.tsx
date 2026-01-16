@@ -29,7 +29,11 @@ const App = () => (
       <Sonner position="top-center" />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={
+            <ProtectedRoute requiredRole="admin">
+              <Index />
+            </ProtectedRoute>
+          } />
           <Route path="/totem" element={<Totem />} />
           <Route path="/painel" element={<Painel />} />
           <Route path="/secretaria" element={
