@@ -62,11 +62,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 // Types
+import type { TipoAtendimento, StatusAtendimento } from '@/types/queue';
+
 interface Ticket {
   id: string;
   id_senha: string;
-  tipo: string;
-  status: string;
+  tipo: TipoAtendimento;
+  status: StatusAtendimento;
   hora_emissao: string;
   hora_chamada?: string;
   hora_fim?: string;
