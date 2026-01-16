@@ -87,9 +87,34 @@ interface SecretariaPanelProps {
 // Helper: Calcular tempo de espera
 function getWaitingTime(horaEmissao: string): string {
   try {
-    return formatDistanceToNow(new Date(horaEmissao), {
+    const emissao = new Date(horaEmissao);
+    const now = new Date();
+    const diffMs = now.getTime() - emissao.getTime();
+    
+    // Se for de outro dia, mostrar "de ontem" ou similar
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours >= 24) {
+      return `mais de ${Math.floor(diffHours / 24)} dia(s)`;
+    }
+    
+    return formatDistanceToNow(emissao, {
       locale: ptBR,
       addSuffix: false
+    });
+  } catch {
+    return '-';
+  }
+}
+
+// Helper: Formatar horário em Brasília (UTC-3)
+function formatTimeBrasilia(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    // Formatar usando o locale pt-BR que automaticamente usa o fuso do navegador
+    return date.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
     });
   } catch {
     return '-';
@@ -628,7 +653,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
 
                         {/* Arrival Time */}
                         <div className="text-xs text-muted-foreground">
-                          {format(new Date(ticket.hora_emissao), 'HH:mm')}
+                          {formatTimeBrasilia(ticket.hora_emissao)}
                         </div>
 
                         {/* Arrow */}
