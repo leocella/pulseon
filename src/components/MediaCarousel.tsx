@@ -22,7 +22,7 @@ function getEmbedUrl(url: string): string {
 
   if (youtubeMatch) {
     const videoId = youtubeMatch[1];
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1`;
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&volume=0`;
   }
 
   // Vimeo
@@ -177,6 +177,7 @@ export function MediaCarousel({
             autoPlay
             muted
             playsInline
+            loop={false}
             onPlay={() => setIsVideoPlaying(true)}
             onEnded={() => {
               setIsVideoPlaying(false);
