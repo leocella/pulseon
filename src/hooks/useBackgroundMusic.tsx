@@ -507,6 +507,85 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         }
     };
 
+    // Player para áudio direto (MP3, stream, etc)
+    if (config.enabled && (musicType === 'audio' || musicType === 'unknown') && config.url) {
+        return (
+            <div
+                style={{
+                    width: '300px',
+                    height: '80px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    flexShrink: 0,
+                    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px',
+                    gap: '12px',
+                }}
+            >
+                <button
+                    onClick={handlePlayPause}
+                    style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        flexShrink: 0,
+                    }}
+                >
+                    {isLoading ? (
+                        <span style={{ color: 'white', fontSize: '16px' }}>⏳</span>
+                    ) : isPlaying ? (
+                        <span style={{ color: 'white', fontSize: '20px' }}>⏸</span>
+                    ) : (
+                        <span style={{ color: 'white', fontSize: '20px', marginLeft: '2px' }}>▶</span>
+                    )}
+                </button>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}>
+                        🎵 Stream de Áudio
+                    </div>
+                    <div style={{
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: '11px',
+                        marginTop: '2px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}>
+                        {config.url.substring(0, 30)}...
+                    </div>
+                    <div style={{
+                        color: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.4)',
+                        fontSize: '10px',
+                        marginTop: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                    }}>
+                        {isPlaying && <span style={{ animation: 'pulse 1.5s infinite' }}>●</span>}
+                        {isPlaying ? 'Tocando' : 'Clique para tocar'}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // Player para Rádio online
     if (config.enabled && musicType === 'radio') {
         return (
@@ -610,30 +689,26 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         );
     }
 
-    // Placeholder quando não há música configurada
-    if (!config.url || !config.enabled) {
-        return (
-            <div
-                style={{
-                    width: '300px',
-                    height: '80px',
-                    borderRadius: '12px',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    border: '1px dashed rgba(255,255,255,0.3)',
-                }}
-            >
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', padding: '8px' }}>
-                    {!config.url ? '🎵 Configure música no Admin' : '🔇 Música desativada'}
-                </span>
-            </div>
-        );
-    }
-
-    return null;
+    // Placeholder quando não há música configurada - SEMPRE retorna algo para manter layout estável
+    return (
+        <div
+            style={{
+                width: '300px',
+                height: '80px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                border: '1px dashed rgba(255,255,255,0.3)',
+            }}
+        >
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', padding: '8px' }}>
+                {!config.url ? '🎵 Configure música no Admin' : '🔇 Música desativada'}
+            </span>
+        </div>
+    );
 }
 
 // Componente para preview do Spotify no Admin
