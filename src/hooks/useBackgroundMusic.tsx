@@ -439,11 +439,33 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
     useEffect(() => {
         if (!audioElement || !config.enabled || !hasInteracted || isManuallyPaused) return;
 
+        let consecutiveFailures = 0;
+        const maxFailures = 3;
+
         const watchdogInterval = setInterval(() => {
             // If supposed to be playing but is paused
             if (audioElement.paused && config.enabled && !isManuallyPaused) {
-                console.log('Watchdog: Audio paused unexpectedly, attempting to restart...');
+                consecutiveFailures++;
+                console.log(`Watchdog: Audio paused unexpectedly (attempt ${consecutiveFailures}/${maxFailures})...`);
+                
+                if (consecutiveFailures >= maxFailures) {
+                    // Full reload of the stream
+                    console.log('Watchdog: Multiple failures, reloading stream...');
+                    audioElement.load();
+                    consecutiveFailures = 0;
+                }
+                
                 audioElement.play().catch(e => console.warn('Watchdog resume failed:', e));
+            } else if (!audioElement.paused) {
+                // Reset counter when playing successfully
+                consecutiveFailures = 0;
+            }
+            
+            // Check if stream is stuck (playing but no audio progress)
+            if (!audioElement.paused && audioElement.readyState < 3) {
+                console.log('Watchdog: Stream appears stuck, readyState:', audioElement.readyState);
+                audioElement.load();
+                audioElement.play().catch(e => console.warn('Watchdog restart failed:', e));
             }
         }, 5000); // Check every 5 seconds
 
