@@ -17,6 +17,7 @@ export type Database = {
       fila_atendimento: {
         Row: {
           atendente: string | null
+          data_emissao: string | null
           hora_chamada: string | null
           hora_emissao: string
           hora_finalizacao: string | null
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           atendente?: string | null
+          data_emissao?: string | null
           hora_chamada?: string | null
           hora_emissao?: string
           hora_finalizacao?: string | null
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           atendente?: string | null
+          data_emissao?: string | null
           hora_chamada?: string | null
           hora_emissao?: string
           hora_finalizacao?: string | null
