@@ -462,13 +462,25 @@ function AdminContent() {
                                     <span className="text-lg">🎵</span>
                                     Ou use URL personalizada
                                 </div>
-                                <Input
-                                    id="musicUrl"
-                                    placeholder="https://open.spotify.com/playlist/... ou URL de áudio"
-                                    value={musicConfig.url}
-                                    onChange={(e) => setMusicUrl(e.target.value)}
-                                    className="text-sm"
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="musicUrl"
+                                        placeholder="https://open.spotify.com/playlist/... ou URL de áudio"
+                                        value={musicConfig.url}
+                                        onChange={(e) => setMusicUrl(e.target.value)}
+                                        className="text-sm pr-10"
+                                    />
+                                    {musicConfig.url && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMusicUrl('')}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-destructive/20 rounded text-muted-foreground hover:text-destructive transition-colors"
+                                            title="Limpar URL"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="text-xs text-muted-foreground space-y-1">
                                     <p><strong>Spotify:</strong> Cole link de playlist, álbum ou faixa (⚠️ só preview sem Premium)</p>
                                     <p><strong>MP3:</strong> URL direta de arquivo de áudio</p>
