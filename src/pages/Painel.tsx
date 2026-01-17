@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Monitor, Clock, ChevronRight, Volume2, VolumeX, Maximize, Minimize, History } from 'lucide-react';
+import { Monitor, Clock, ChevronRight, Volume2, VolumeX, Maximize, Minimize, History, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useCurrentTicket, useRecentlyCalledTickets } from '@/hooks/useQueue';
@@ -64,11 +64,12 @@ export default function Painel() {
     };
   }, []);
 
-  // Auto-reload page every 4 hours to prevent memory issues
+  // Auto-reload page every 2 hours to prevent memory issues on TV
   useEffect(() => {
     const reloadInterval = setInterval(() => {
+      console.log('Auto-reloading page to free memory...');
       window.location.reload();
-    }, 4 * 60 * 60 * 1000); // 4 hours
+    }, 2 * 60 * 60 * 1000); // 2 hours
 
     return () => clearInterval(reloadInterval);
   }, []);
@@ -210,6 +211,17 @@ export default function Painel() {
             ) : (
               <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
+          </Button>
+
+          {/* Reload Button - to free memory */}
+          <Button
+            onClick={() => window.location.reload()}
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10"
+            title="Recarregar página (liberar memória)"
+          >
+            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
 
           <div className="hidden sm:block">
