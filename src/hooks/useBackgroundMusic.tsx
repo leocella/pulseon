@@ -285,9 +285,11 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
     const [isManuallyPaused, setIsManuallyPaused] = useState(false); // Track user intent
     const [currentTrackIndex, setCurrentTrackIndex] = useState(0); // For playlist mode
     const [currentTrackName, setCurrentTrackName] = useState(''); // Current track name for display
+    const currentTrackIndexRef = useRef(0); // Ref to avoid stale closure in onended
     const wasPlayingBeforeAlertRef = useRef(false);
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
     const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const playlistRef = useRef<MusicTrack[]>([]); // Keep playlist in ref for callbacks
 
     // Sync with parent interaction state
     useEffect(() => {
@@ -495,9 +497,15 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         }
 
         const playlist = config.playlist;
-        const currentTrack = playlist[currentTrackIndex % playlist.length];
+        playlistRef.current = playlist; // Keep ref updated
+        currentTrackIndexRef.current = currentTrackIndex; // Keep ref updated
+        
+        const safeIndex = currentTrackIndex % playlist.length;
+        const currentTrack = playlist[safeIndex];
         
         if (!currentTrack) return;
+
+        console.log(`Playing track ${safeIndex + 1}/${playlist.length}: ${currentTrack.name}`);
 
         const audio = new Audio();
         audio.volume = config.volume;
@@ -530,17 +538,22 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
 
         // Quando a faixa termina, avançar para próxima
         audio.onended = () => {
-            console.log('Track ended, moving to next...');
-            const nextIndex = (currentTrackIndex + 1) % playlist.length;
+            const currentPlaylist = playlistRef.current;
+            const currentIdx = currentTrackIndexRef.current;
+            const nextIndex = (currentIdx + 1) % currentPlaylist.length;
+            console.log(`Track ended. Moving from ${currentIdx + 1} to ${nextIndex + 1}/${currentPlaylist.length}`);
             setCurrentTrackIndex(nextIndex);
         };
 
         audio.onerror = (e) => {
+            const currentPlaylist = playlistRef.current;
+            const currentIdx = currentTrackIndexRef.current;
             console.error('Erro ao carregar MP3:', currentTrack.url, e);
             setIsLoading(false);
             // Tentar próxima faixa
-            if (playlist.length > 1) {
-                const nextIndex = (currentTrackIndex + 1) % playlist.length;
+            if (currentPlaylist.length > 1) {
+                const nextIndex = (currentIdx + 1) % currentPlaylist.length;
+                console.log(`Error loading track, skipping to ${nextIndex + 1}`);
                 setCurrentTrackIndex(nextIndex);
             }
         };
