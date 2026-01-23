@@ -7,10 +7,18 @@ import { subscribeToAlertEvents } from '@/hooks/useAlertSound';
 // Configurações de música de fundo sincronizadas via Supabase
 // Assim você configura no PC e a TV puxa automaticamente!
 
+export interface MusicTrack {
+    id: string;
+    name: string;
+    url: string;
+}
+
 export interface BackgroundMusicConfig {
     url: string;
     volume: number; // 0 a 1
     enabled: boolean;
+    playlist?: MusicTrack[]; // Lista de MP3s para tocar em loop
+    playlistMode?: boolean; // Se true, usa playlist em vez de URL única
 }
 
 export interface RadioStation {
@@ -90,8 +98,9 @@ const defaultConfig: BackgroundMusicConfig = {
 };
 
 // Detecta o tipo de URL de música
-export function getMusicType(url: string): 'spotify' | 'youtube' | 'radio' | 'audio' | 'unknown' {
+export function getMusicType(url: string): 'spotify' | 'youtube' | 'radio' | 'audio' | 'playlist' | 'unknown' {
     if (!url) return 'unknown';
+    if (url === 'playlist') return 'playlist';
     if (url.includes('spotify.com')) return 'spotify';
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
     // Detectar rádios conhecidas
@@ -196,7 +205,7 @@ export function useBackgroundMusic() {
 
     // Funções para atualizar configuração
     const setUrl = useCallback((url: string) => {
-        const newConfig = { ...config, url };
+        const newConfig = { ...config, url, playlistMode: false };
         saveMutation.mutate(newConfig);
     }, [config, saveMutation]);
 
@@ -215,7 +224,37 @@ export function useBackgroundMusic() {
         saveMutation.mutate(newConfig);
     }, [config, saveMutation]);
 
-    const musicType = getMusicType(config.url);
+    // Funções para gerenciar playlist de MP3s
+    const setPlaylist = useCallback((playlist: MusicTrack[]) => {
+        const newConfig = { ...config, playlist, playlistMode: playlist.length > 0, url: playlist.length > 0 ? 'playlist' : '' };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
+
+    const addToPlaylist = useCallback((track: MusicTrack) => {
+        const currentPlaylist = config.playlist || [];
+        const newPlaylist = [...currentPlaylist, track];
+        const newConfig = { ...config, playlist: newPlaylist, playlistMode: true, url: 'playlist' };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
+
+    const removeFromPlaylist = useCallback((trackId: string) => {
+        const currentPlaylist = config.playlist || [];
+        const newPlaylist = currentPlaylist.filter(t => t.id !== trackId);
+        const newConfig = { 
+            ...config, 
+            playlist: newPlaylist, 
+            playlistMode: newPlaylist.length > 0,
+            url: newPlaylist.length > 0 ? 'playlist' : ''
+        };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
+
+    const clearPlaylist = useCallback(() => {
+        const newConfig = { ...config, playlist: [], playlistMode: false, url: '' };
+        saveMutation.mutate(newConfig);
+    }, [config, saveMutation]);
+
+    const musicType = getMusicType(config.playlistMode ? 'playlist' : config.url);
     const currentRadioStation = getRadioStationByUrl(config.url);
 
     return {
@@ -224,6 +263,10 @@ export function useBackgroundMusic() {
         setVolume,
         setEnabled,
         toggleEnabled,
+        setPlaylist,
+        addToPlaylist,
+        removeFromPlaylist,
+        clearPlaylist,
         musicType,
         spotifyEmbedUrl: musicType === 'spotify' ? getSpotifyEmbedUrl(config.url) : null,
         currentRadioStation,
@@ -240,6 +283,8 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isManuallyPaused, setIsManuallyPaused] = useState(false); // Track user intent
+    const [currentTrackIndex, setCurrentTrackIndex] = useState(0); // For playlist mode
+    const [currentTrackName, setCurrentTrackName] = useState(''); // Current track name for display
     const wasPlayingBeforeAlertRef = useRef(false);
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
     const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -435,6 +480,87 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         };
     }, [config.url, config.enabled, musicType]); // Intentionally not including hasInteracted to avoid full reset
 
+    // Para playlist de MP3s (loop)
+    useEffect(() => {
+        if (musicType !== 'playlist' || !config.enabled || !config.playlist || config.playlist.length === 0) {
+            if (audioElement && musicType === 'playlist') {
+                audioElement.pause();
+                audioElement.src = '';
+                setAudioElement(null);
+            }
+            if (musicType === 'playlist') {
+                setIsPlaying(false);
+            }
+            return;
+        }
+
+        const playlist = config.playlist;
+        const currentTrack = playlist[currentTrackIndex % playlist.length];
+        
+        if (!currentTrack) return;
+
+        const audio = new Audio();
+        audio.volume = config.volume;
+        audio.src = currentTrack.url;
+        audio.crossOrigin = 'anonymous';
+        audio.preload = 'auto';
+
+        setCurrentTrackName(currentTrack.name);
+
+        const tryToPlay = () => {
+            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+            if (isManuallyPaused) return;
+
+            audio.play().catch(e => {
+                console.log('Playlist autoplay bloqueado:', e);
+                setIsPlaying(false);
+            });
+        };
+
+        audio.onplay = () => {
+            setIsPlaying(true);
+        };
+
+        audio.onpause = () => {
+            setIsPlaying(false);
+        };
+
+        audio.onwaiting = () => setIsLoading(true);
+        audio.onplaying = () => setIsLoading(false);
+
+        // Quando a faixa termina, avançar para próxima
+        audio.onended = () => {
+            console.log('Track ended, moving to next...');
+            const nextIndex = (currentTrackIndex + 1) % playlist.length;
+            setCurrentTrackIndex(nextIndex);
+        };
+
+        audio.onerror = (e) => {
+            console.error('Erro ao carregar MP3:', currentTrack.url, e);
+            setIsLoading(false);
+            // Tentar próxima faixa
+            if (playlist.length > 1) {
+                const nextIndex = (currentTrackIndex + 1) % playlist.length;
+                setCurrentTrackIndex(nextIndex);
+            }
+        };
+
+        setAudioElement(audio);
+
+        if (hasInteracted && !isManuallyPaused) {
+            tryToPlay();
+        }
+
+        return () => {
+            audio.pause();
+            audio.src = '';
+            audio.onplay = null;
+            audio.onpause = null;
+            audio.onerror = null;
+            audio.onended = null;
+        };
+    }, [config.playlist, config.enabled, musicType, currentTrackIndex]);
+
     // Watchdog to restart playback if it stops unexpectedly
     useEffect(() => {
         if (!audioElement || !config.enabled || !hasInteracted || isManuallyPaused) return;
@@ -506,6 +632,83 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
             }
         }
     };
+
+    // Player para playlist de MP3s
+    if (config.enabled && musicType === 'playlist' && config.playlist && config.playlist.length > 0) {
+        const playlist = config.playlist;
+        return (
+            <div
+                style={{
+                    width: '300px',
+                    height: '80px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    flexShrink: 0,
+                    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px',
+                    gap: '12px',
+                }}
+            >
+                <button
+                    onClick={handlePlayPause}
+                    style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        flexShrink: 0,
+                    }}
+                >
+                    {isLoading ? (
+                        <span style={{ color: 'white', fontSize: '16px' }}>⏳</span>
+                    ) : isPlaying ? (
+                        <span style={{ color: 'white', fontSize: '20px' }}>⏸</span>
+                    ) : (
+                        <span style={{ color: 'white', fontSize: '20px', marginLeft: '2px' }}>▶</span>
+                    )}
+                </button>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}>
+                        🎵 {currentTrackName || 'Playlist'}
+                    </div>
+                    <div style={{
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: '11px',
+                        marginTop: '2px',
+                    }}>
+                        {currentTrackIndex + 1} de {playlist.length} faixas
+                    </div>
+                    <div style={{
+                        color: isPlaying ? '#1DB954' : 'rgba(255,255,255,0.4)',
+                        fontSize: '10px',
+                        marginTop: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                    }}>
+                        {isPlaying && <span style={{ animation: 'pulse 1.5s infinite' }}>●</span>}
+                        {isPlaying ? 'Tocando em loop' : 'Clique para tocar'}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // Player para áudio direto (MP3, stream, etc)
     if (config.enabled && (musicType === 'audio' || musicType === 'unknown') && config.url) {

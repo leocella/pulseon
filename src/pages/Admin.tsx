@@ -48,7 +48,8 @@ import { MediaCarousel } from '@/components/MediaCarousel';
 import { useAuth } from '@/hooks/useAuth';
 import type { MediaItem } from '@/components/MediaCarousel';
 import type { PanelMediaItem } from '@/hooks/usePanelMedia';
-import { useBackgroundMusic, SpotifyPreview, RadioSelector, RADIO_STATIONS, getMusicType } from '@/hooks/useBackgroundMusic';
+import { useBackgroundMusic, SpotifyPreview, RadioSelector, RADIO_STATIONS, getMusicType, type MusicTrack } from '@/hooks/useBackgroundMusic';
+import { supabase } from '@/integrations/supabase/client';
 
 type MediaType = 'image' | 'video' | 'external';
 
@@ -81,7 +82,20 @@ function AdminContent() {
     const updateMedia = useUpdateMedia();
 
     // Background music config
-    const { config: musicConfig, setUrl: setMusicUrl, setVolume: setMusicVolume, toggleEnabled: toggleMusic, musicType } = useBackgroundMusic();
+    const { 
+        config: musicConfig, 
+        setUrl: setMusicUrl, 
+        setVolume: setMusicVolume, 
+        toggleEnabled: toggleMusic, 
+        musicType,
+        addToPlaylist,
+        removeFromPlaylist,
+        clearPlaylist,
+    } = useBackgroundMusic();
+    
+    // State for MP3 upload
+    const [isUploadingMp3, setIsUploadingMp3] = useState(false);
+    const mp3InputRef = useRef<HTMLInputElement>(null);
 
     // Validate file size
     const validateFileSize = (file: File): boolean => {
@@ -391,6 +405,110 @@ function AdminContent() {
         resetForm();
     };
 
+    // Handle MP3 files upload for background music playlist
+    const handleMp3Upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        // Filter only audio files
+        const audioFiles = files.filter(f => f.type.startsWith('audio/'));
+        if (audioFiles.length === 0) {
+            toast.error('Selecione arquivos de áudio (MP3, etc.)');
+            return;
+        }
+
+        setIsUploadingMp3(true);
+        let successCount = 0;
+
+        // Sanitize unidade name for storage path
+        const sanitizedUnidade = UNIDADE
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9-_]/g, '_');
+
+        for (const file of audioFiles) {
+            try {
+                // Upload to Supabase Storage
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const filePath = `${sanitizedUnidade}/music/${fileName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('panel-media')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('panel-media')
+                    .getPublicUrl(filePath);
+
+                // Add to playlist
+                const track: MusicTrack = {
+                    id: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                    name: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
+                    url: publicUrl,
+                };
+
+                addToPlaylist(track);
+                successCount++;
+            } catch (error) {
+                console.error(`Error uploading ${file.name}:`, error);
+                toast.error(`Erro ao enviar ${file.name}`);
+            }
+        }
+
+        setIsUploadingMp3(false);
+        if (mp3InputRef.current) mp3InputRef.current.value = '';
+
+        if (successCount > 0) {
+            toast.success(`${successCount} música(s) adicionada(s) à playlist!`);
+        }
+    };
+
+    // Handle remove track from playlist
+    const handleRemoveTrack = async (track: MusicTrack) => {
+        // Try to delete from storage
+        try {
+            const urlParts = track.url.split('/panel-media/');
+            if (urlParts.length > 1) {
+                const filePath = decodeURIComponent(urlParts[1]);
+                await supabase.storage.from('panel-media').remove([filePath]);
+            }
+        } catch (e) {
+            console.error('Error deleting file from storage:', e);
+        }
+
+        removeFromPlaylist(track.id);
+        toast.success('Música removida da playlist');
+    };
+
+    // Handle clear all playlist
+    const handleClearPlaylist = async () => {
+        if (!confirm('Tem certeza que deseja limpar toda a playlist?')) return;
+
+        // Try to delete all files from storage
+        const playlist = musicConfig.playlist || [];
+        for (const track of playlist) {
+            try {
+                const urlParts = track.url.split('/panel-media/');
+                if (urlParts.length > 1) {
+                    const filePath = decodeURIComponent(urlParts[1]);
+                    await supabase.storage.from('panel-media').remove([filePath]);
+                }
+            } catch (e) {
+                console.error('Error deleting file:', e);
+            }
+        }
+
+        clearPlaylist();
+        toast.success('Playlist limpa!');
+    };
+
     // Export configuration
     const handleExportConfig = () => {
         const config = {
@@ -502,7 +620,85 @@ function AdminContent() {
                                 </Button>
                             </div>
 
-                            {/* Radio Stations Selector - NOVA SEÇÃO */}
+                            {/* MP3 Playlist Upload - NOVA SEÇÃO */}
+                            <div className="space-y-3 pt-2 border-t">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                        <span className="text-lg">🎵</span>
+                                        Playlist de MP3s (Loop)
+                                    </div>
+                                    {(musicConfig.playlist?.length || 0) > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleClearPlaylist}
+                                            className="text-destructive hover:text-destructive h-7 px-2"
+                                        >
+                                            <Trash2 className="w-3 h-3 mr-1" />
+                                            Limpar
+                                        </Button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Envie seus próprios arquivos MP3 para tocar em loop no painel.
+                                </p>
+
+                                {/* Upload Button */}
+                                <div>
+                                    <Input
+                                        ref={mp3InputRef}
+                                        type="file"
+                                        accept="audio/*"
+                                        multiple
+                                        onChange={handleMp3Upload}
+                                        className="hidden"
+                                        id="mp3-upload"
+                                    />
+                                    <Button
+                                        variant={musicConfig.playlistMode ? "default" : "outline"}
+                                        className="w-full"
+                                        onClick={() => mp3InputRef.current?.click()}
+                                        disabled={isUploadingMp3}
+                                    >
+                                        {isUploadingMp3 ? (
+                                            <>⏳ Enviando...</>
+                                        ) : (
+                                            <>
+                                                <FileUp className="w-4 h-4 mr-2" />
+                                                Adicionar MP3s à Playlist
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+
+                                {/* Playlist Display */}
+                                {(musicConfig.playlist?.length || 0) > 0 && (
+                                    <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+                                        {musicConfig.playlist?.map((track, index) => (
+                                            <div key={track.id} className="flex items-center gap-2 p-2 hover:bg-muted/50">
+                                                <span className="text-xs text-muted-foreground w-5">{index + 1}.</span>
+                                                <span className="flex-1 text-sm truncate">{track.name}</span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6 text-destructive hover:text-destructive"
+                                                    onClick={() => handleRemoveTrack(track)}
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {musicConfig.playlistMode && (musicConfig.playlist?.length || 0) > 0 && (
+                                    <p className="text-xs text-muted-foreground bg-green-500/10 p-2 rounded border border-green-500/20">
+                                        ✅ <strong>Playlist ativa!</strong> {musicConfig.playlist?.length} música(s) tocando em loop.
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Radio Stations Selector */}
                             <div className="space-y-3 pt-2 border-t">
                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                     <span className="text-lg">📻</span>
