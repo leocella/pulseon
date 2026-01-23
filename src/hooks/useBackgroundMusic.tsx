@@ -482,6 +482,16 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         };
     }, [config.url, config.enabled, musicType]); // Intentionally not including hasInteracted to avoid full reset
 
+    // Resetar o índice quando a playlist mudar para evitar índice inválido
+    useEffect(() => {
+        if (config.playlist && config.playlist.length > 0) {
+            // Se o índice atual é maior que o tamanho da playlist, resetar
+            if (currentTrackIndex >= config.playlist.length) {
+                setCurrentTrackIndex(0);
+            }
+        }
+    }, [config.playlist?.length]);
+
     // Para playlist de MP3s (loop)
     useEffect(() => {
         if (musicType !== 'playlist' || !config.enabled || !config.playlist || config.playlist.length === 0) {
@@ -497,15 +507,16 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         }
 
         const playlist = config.playlist;
-        playlistRef.current = playlist; // Keep ref updated
-        currentTrackIndexRef.current = currentTrackIndex; // Keep ref updated
+        playlistRef.current = playlist;
         
         const safeIndex = currentTrackIndex % playlist.length;
+        currentTrackIndexRef.current = safeIndex; // Keep ref updated with SAFE index
+        
         const currentTrack = playlist[safeIndex];
         
         if (!currentTrack) return;
 
-        console.log(`Playing track ${safeIndex + 1}/${playlist.length}: ${currentTrack.name}`);
+        console.log(`🎵 Playlist: Playing track ${safeIndex + 1}/${playlist.length}: ${currentTrack.name}`);
 
         const audio = new Audio();
         audio.volume = config.volume;
@@ -514,12 +525,15 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
         audio.preload = 'auto';
 
         setCurrentTrackName(currentTrack.name);
+        setAudioElement(audio);
 
         const tryToPlay = () => {
             if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
             if (isManuallyPaused) return;
 
-            audio.play().catch(e => {
+            audio.play().then(() => {
+                console.log(`▶️ Started playing: ${currentTrack.name}`);
+            }).catch(e => {
                 console.log('Playlist autoplay bloqueado:', e);
                 setIsPlaying(false);
             });
@@ -527,6 +541,7 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
 
         audio.onplay = () => {
             setIsPlaying(true);
+            setIsLoading(false);
         };
 
         audio.onpause = () => {
@@ -535,33 +550,43 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
 
         audio.onwaiting = () => setIsLoading(true);
         audio.onplaying = () => setIsLoading(false);
+        audio.oncanplaythrough = () => setIsLoading(false);
 
         // Quando a faixa termina, avançar para próxima
         audio.onended = () => {
             const currentPlaylist = playlistRef.current;
             const currentIdx = currentTrackIndexRef.current;
+            if (currentPlaylist.length === 0) return;
+            
             const nextIndex = (currentIdx + 1) % currentPlaylist.length;
-            console.log(`Track ended. Moving from ${currentIdx + 1} to ${nextIndex + 1}/${currentPlaylist.length}`);
-            setCurrentTrackIndex(nextIndex);
+            console.log(`⏭️ Track ended. Moving from ${currentIdx + 1} to ${nextIndex + 1}/${currentPlaylist.length}`);
+            
+            // Usar setTimeout para garantir que o estado seja atualizado corretamente
+            setTimeout(() => {
+                setCurrentTrackIndex(nextIndex);
+            }, 100);
         };
 
         audio.onerror = (e) => {
             const currentPlaylist = playlistRef.current;
             const currentIdx = currentTrackIndexRef.current;
-            console.error('Erro ao carregar MP3:', currentTrack.url, e);
+            console.error('❌ Erro ao carregar MP3:', currentTrack.url, e);
             setIsLoading(false);
-            // Tentar próxima faixa
+            
+            // Tentar próxima faixa após delay
             if (currentPlaylist.length > 1) {
                 const nextIndex = (currentIdx + 1) % currentPlaylist.length;
-                console.log(`Error loading track, skipping to ${nextIndex + 1}`);
-                setCurrentTrackIndex(nextIndex);
+                console.log(`Skipping to track ${nextIndex + 1} due to error`);
+                setTimeout(() => {
+                    setCurrentTrackIndex(nextIndex);
+                }, 500);
             }
         };
 
-        setAudioElement(audio);
-
+        // Iniciar reprodução se já tiver interação
         if (hasInteracted && !isManuallyPaused) {
-            tryToPlay();
+            // Pequeno delay para garantir que o áudio está pronto
+            setTimeout(tryToPlay, 50);
         }
 
         return () => {
@@ -571,8 +596,11 @@ export function BackgroundMusicPlayer({ hasUserInteracted: parentHasInteracted }
             audio.onpause = null;
             audio.onerror = null;
             audio.onended = null;
+            audio.onwaiting = null;
+            audio.onplaying = null;
+            audio.oncanplaythrough = null;
         };
-    }, [config.playlist, config.enabled, musicType, currentTrackIndex]);
+    }, [config.playlist, config.enabled, musicType, currentTrackIndex, hasInteracted, isManuallyPaused, config.volume]);
 
     // Watchdog to restart playback if it stops unexpectedly
     useEffect(() => {
