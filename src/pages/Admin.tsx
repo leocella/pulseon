@@ -61,15 +61,19 @@ function AdminContent() {
     const { signOut, user } = useAuth();
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<PanelMediaItem | null>(null);
     const [mediaType, setMediaType] = useState<MediaType>('image');
     const [externalUrl, setExternalUrl] = useState('');
     const [altText, setAltText] = useState('');
     const [duration, setDuration] = useState(8);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [bulkUploadProgress, setBulkUploadProgress] = useState<{current: number, total: number} | null>(null);
     const [videoPreview, setVideoPreview] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
     const { data: mediaItems = [], isLoading } = usePanelMedia();
     const uploadMedia = useUploadMedia();
@@ -305,8 +309,86 @@ function AdminContent() {
         setAltText('');
         setDuration(8);
         setSelectedFile(null);
+        setSelectedFiles([]);
         setVideoPreview(null);
+        setBulkUploadProgress(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (bulkFileInputRef.current) bulkFileInputRef.current.value = '';
+    };
+
+    // Handle multiple file selection
+    const handleBulkFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        const validFiles: File[] = [];
+        
+        for (const file of files) {
+            if (!validateFileSize(file)) continue;
+            validFiles.push(file);
+        }
+
+        if (validFiles.length === 0) {
+            toast.error('Nenhum arquivo válido selecionado');
+            return;
+        }
+
+        setSelectedFiles(validFiles);
+        toast.success(`${validFiles.length} arquivo(s) selecionado(s)`);
+    };
+
+    // Upload multiple files
+    const handleBulkUpload = async () => {
+        if (selectedFiles.length === 0) {
+            toast.error('Selecione pelo menos um arquivo');
+            return;
+        }
+
+        setBulkUploadProgress({ current: 0, total: selectedFiles.length });
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            setBulkUploadProgress({ current: i + 1, total: selectedFiles.length });
+
+            try {
+                let fileToUpload = file;
+                const isImage = file.type.startsWith('image/');
+                const isVideo = file.type.startsWith('video/');
+                const type: MediaType = isImage ? 'image' : isVideo ? 'video' : 'image';
+
+                // Compress images
+                if (isImage) {
+                    fileToUpload = await compressImage(file);
+                }
+
+                await uploadMedia.mutateAsync({
+                    type,
+                    file: fileToUpload,
+                    alt: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for alt text
+                    duration: isImage ? duration : undefined,
+                });
+
+                successCount++;
+            } catch (error) {
+                console.error(`Error uploading ${file.name}:`, error);
+                errorCount++;
+            }
+        }
+
+        setBulkUploadProgress(null);
+
+        if (successCount > 0) {
+            toast.success(`${successCount} arquivo(s) enviado(s) com sucesso!`);
+        }
+        if (errorCount > 0) {
+            toast.error(`${errorCount} arquivo(s) falharam no upload`);
+        }
+
+        setIsBulkUploadOpen(false);
+        resetForm();
     };
 
     // Export configuration
@@ -585,6 +667,7 @@ function AdminContent() {
                 {/* Add Media */}
                 <div className="lg:col-span-1">
                     <Card className="p-6">
+                        {/* Single file upload */}
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button className="w-full h-14 text-lg" onClick={() => setIsAddDialogOpen(true)}>
@@ -711,6 +794,117 @@ function AdminContent() {
                                                 setIsAddDialogOpen(false);
                                                 resetForm();
                                             }}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* Bulk upload dialog */}
+                        <Dialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full h-12 mt-3" variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+                                    <FileUp className="w-5 h-5 mr-2" />
+                                    Upload Múltiplo
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Upload de Múltiplos Arquivos</DialogTitle>
+                                    <DialogDescription>
+                                        Selecione várias imagens e vídeos de uma vez
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-4 mt-4">
+                                    {/* File Input */}
+                                    <div>
+                                        <Label>Selecionar Arquivos</Label>
+                                        <Input
+                                            ref={bulkFileInputRef}
+                                            type="file"
+                                            accept="image/*,video/*"
+                                            multiple
+                                            onChange={handleBulkFileSelect}
+                                            className="cursor-pointer"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" />
+                                            Imagens e vídeos. Imagens serão comprimidas automaticamente.
+                                        </p>
+                                    </div>
+
+                                    {/* Selected Files List */}
+                                    {selectedFiles.length > 0 && (
+                                        <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
+                                            <p className="text-sm font-medium mb-2">
+                                                {selectedFiles.length} arquivo(s) selecionado(s):
+                                            </p>
+                                            <ul className="space-y-1">
+                                                {selectedFiles.map((file, index) => (
+                                                    <li key={index} className="text-xs text-muted-foreground flex items-center gap-2">
+                                                        {file.type.startsWith('image/') ? (
+                                                            <ImageIcon className="w-3 h-3" />
+                                                        ) : (
+                                                            <Video className="w-3 h-3" />
+                                                        )}
+                                                        <span className="truncate flex-1">{file.name}</span>
+                                                        <span>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Duration for images */}
+                                    <div>
+                                        <Label>Duração das imagens (segundos)</Label>
+                                        <Input
+                                            type="number"
+                                            min="3"
+                                            max="60"
+                                            value={duration}
+                                            onChange={(e) => setDuration(parseInt(e.target.value) || 8)}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Vídeos usam sua própria duração
+                                        </p>
+                                    </div>
+
+                                    {/* Progress */}
+                                    {bulkUploadProgress && (
+                                        <div className="bg-primary/10 p-3 rounded-lg">
+                                            <p className="text-sm font-medium text-center">
+                                                Enviando {bulkUploadProgress.current} de {bulkUploadProgress.total}...
+                                            </p>
+                                            <div className="w-full bg-secondary h-2 rounded-full mt-2 overflow-hidden">
+                                                <div 
+                                                    className="bg-primary h-full transition-all duration-300"
+                                                    style={{ width: `${(bulkUploadProgress.current / bulkUploadProgress.total) * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="flex gap-2 pt-4">
+                                        <Button
+                                            onClick={handleBulkUpload}
+                                            disabled={selectedFiles.length === 0 || bulkUploadProgress !== null}
+                                            className="flex-1"
+                                        >
+                                            <Upload className="w-4 h-4 mr-2" />
+                                            {bulkUploadProgress ? 'Enviando...' : `Enviar ${selectedFiles.length} arquivo(s)`}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsBulkUploadOpen(false);
+                                                resetForm();
+                                            }}
+                                            disabled={bulkUploadProgress !== null}
                                         >
                                             <X className="w-4 h-4" />
                                         </Button>
