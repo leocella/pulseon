@@ -70,7 +70,7 @@ function AdminContent() {
     const [duration, setDuration] = useState(8);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [bulkUploadProgress, setBulkUploadProgress] = useState<{current: number, total: number} | null>(null);
+    const [bulkUploadProgress, setBulkUploadProgress] = useState<{ current: number, total: number } | null>(null);
     const [videoPreview, setVideoPreview] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,17 +82,18 @@ function AdminContent() {
     const updateMedia = useUpdateMedia();
 
     // Background music config
-    const { 
-        config: musicConfig, 
-        setUrl: setMusicUrl, 
-        setVolume: setMusicVolume, 
-        toggleEnabled: toggleMusic, 
+    const {
+        config: musicConfig,
+        setUrl: setMusicUrl,
+        setVolume: setMusicVolume,
+        toggleEnabled: toggleMusic,
         musicType,
         addToPlaylist,
         removeFromPlaylist,
         clearPlaylist,
+        setPlaylist,
     } = useBackgroundMusic();
-    
+
     // State for MP3 upload
     const [isUploadingMp3, setIsUploadingMp3] = useState(false);
     const mp3InputRef = useRef<HTMLInputElement>(null);
@@ -336,7 +337,7 @@ function AdminContent() {
         if (files.length === 0) return;
 
         const validFiles: File[] = [];
-        
+
         for (const file of files) {
             if (!validateFileSize(file)) continue;
             validFiles.push(file);
@@ -406,6 +407,7 @@ function AdminContent() {
     };
 
     // Handle MP3 files upload for background music playlist
+    // Handle MP3 files upload for background music playlist
     const handleMp3Upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
@@ -419,6 +421,7 @@ function AdminContent() {
 
         setIsUploadingMp3(true);
         let successCount = 0;
+        const newTracks: MusicTrack[] = [];
 
         // Sanitize unidade name for storage path
         const sanitizedUnidade = UNIDADE
@@ -454,12 +457,18 @@ function AdminContent() {
                     url: publicUrl,
                 };
 
-                addToPlaylist(track);
+                newTracks.push(track);
                 successCount++;
             } catch (error) {
                 console.error(`Error uploading ${file.name}:`, error);
                 toast.error(`Erro ao enviar ${file.name}`);
             }
+        }
+
+        if (newTracks.length > 0) {
+            const currentPlaylist = musicConfig.playlist || [];
+            // Append new tracks to existing playlist
+            setPlaylist([...currentPlaylist, ...newTracks]);
         }
 
         setIsUploadingMp3(false);
@@ -712,11 +721,10 @@ function AdminContent() {
                                         <button
                                             key={station.id}
                                             onClick={() => setMusicUrl(station.url)}
-                                            className={`text-left p-3 rounded-lg border transition-all ${
-                                                musicConfig.url === station.url
+                                            className={`text-left p-3 rounded-lg border transition-all ${musicConfig.url === station.url
                                                     ? 'border-primary bg-primary/10 ring-1 ring-primary'
                                                     : 'border-border bg-card hover:border-primary/50 hover:bg-muted/50'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xl flex-shrink-0">📻</span>
@@ -766,16 +774,15 @@ function AdminContent() {
 
                                 {/* Tipo detectado */}
                                 {musicConfig.url && (
-                                    <div className={`text-xs px-2 py-1 rounded inline-block ${
-                                        musicType === 'spotify' ? 'bg-green-500/20 text-green-600' :
-                                        musicType === 'radio' ? 'bg-purple-500/20 text-purple-600' :
-                                        musicType === 'audio' ? 'bg-blue-500/20 text-blue-600' :
-                                        'bg-yellow-500/20 text-yellow-600'
-                                    }`}>
+                                    <div className={`text-xs px-2 py-1 rounded inline-block ${musicType === 'spotify' ? 'bg-green-500/20 text-green-600' :
+                                            musicType === 'radio' ? 'bg-purple-500/20 text-purple-600' :
+                                                musicType === 'audio' ? 'bg-blue-500/20 text-blue-600' :
+                                                    'bg-yellow-500/20 text-yellow-600'
+                                        }`}>
                                         {musicType === 'spotify' ? '✓ Spotify detectado' :
-                                         musicType === 'radio' ? '✓ Rádio online selecionada' :
-                                         musicType === 'audio' ? '✓ Áudio MP3 detectado' :
-                                         '⚠ Tipo não reconhecido'}
+                                            musicType === 'radio' ? '✓ Rádio online selecionada' :
+                                                musicType === 'audio' ? '✓ Áudio MP3 detectado' :
+                                                    '⚠ Tipo não reconhecido'}
                                     </div>
                                 )}
                             </div>
@@ -812,7 +819,7 @@ function AdminContent() {
                                         <>
                                             <SpotifyPreview url={musicConfig.url} />
                                             <p className="text-xs text-amber-600 mt-2 bg-amber-500/10 p-2 rounded">
-                                                ⚠️ Spotify só toca ~30 segundos sem conta Premium logada na TV. 
+                                                ⚠️ Spotify só toca ~30 segundos sem conta Premium logada na TV.
                                                 Recomendamos usar uma rádio online acima!
                                             </p>
                                         </>
@@ -1076,7 +1083,7 @@ function AdminContent() {
                                                 Enviando {bulkUploadProgress.current} de {bulkUploadProgress.total}...
                                             </p>
                                             <div className="w-full bg-secondary h-2 rounded-full mt-2 overflow-hidden">
-                                                <div 
+                                                <div
                                                     className="bg-primary h-full transition-all duration-300"
                                                     style={{ width: `${(bulkUploadProgress.current / bulkUploadProgress.total) * 100}%` }}
                                                 />
