@@ -6,7 +6,7 @@ import { useCurrentTicket, useRecentlyCalledTickets } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePanelMedia } from '@/hooks/usePanelMedia';
 import { useAlertSound } from '@/hooks/useAlertSound';
-import { BackgroundMusicPlayer } from '@/hooks/useBackgroundMusic';
+
 import { TicketNumber } from '@/components/TicketNumber';
 import { TicketBadge } from '@/components/TicketBadge';
 import { MediaCarousel } from '@/components/MediaCarousel';
@@ -150,9 +150,8 @@ export default function Painel() {
     <div className="h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col overflow-hidden">
       {/* Header - Layout com 3 colunas: Player | Logo+Nome | Controles */}
       <header className="shrink-0 flex items-center justify-between px-4 py-2 bg-gradient-to-r from-primary to-primary/80 border-b border-primary/20">
-        {/* Coluna Esquerda: Player Spotify */}
+        {/* Coluna Esquerda - Espaço reservado */}
         <div className="flex items-center min-w-[300px]">
-          <BackgroundMusicPlayer hasUserInteracted={hasUserInteracted} />
         </div>
 
         {/* Coluna Central: Logo + Nome do Lab */}
