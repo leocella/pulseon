@@ -179,40 +179,48 @@ function AdminContent() {
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        try {
+            const file = e.target.files?.[0];
+            if (!file) return;
 
-        if (!validateFileSize(file)) {
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            return;
-        }
-
-        // Compress image if it's an image
-        if (file.type.startsWith('image/')) {
-            toast.info('Processando imagem...');
-
-            // Detectar se é retrato antes de comprimir
-            const isPortrait = await new Promise<boolean>((resolve) => {
-                const img = new Image();
-                img.onload = () => resolve(img.height > img.width);
-                img.src = URL.createObjectURL(file);
-            });
-
-            const compressed = await compressImage(file);
-            setSelectedFile(compressed);
-
-            if (isPortrait) {
-                toast.success('Imagem rotacionada para paisagem e comprimida!');
-            } else {
-                toast.success('Imagem comprimida!');
+            if (!validateFileSize(file)) {
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
             }
-        } else if (file.type.startsWith('video/')) {
-            // Create video preview
-            const url = URL.createObjectURL(file);
-            setVideoPreview(url);
-            setSelectedFile(file);
-        } else {
-            setSelectedFile(file);
+
+            // Compress image if it's an image
+            if (file.type.startsWith('image/')) {
+                toast.info('Processando imagem...');
+
+                // Detectar se é retrato antes de comprimir
+                const isPortrait = await new Promise<boolean>((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img.height > img.width);
+                    img.onerror = () => resolve(false);
+                    img.src = URL.createObjectURL(file);
+                });
+
+                const compressed = await compressImage(file);
+                setSelectedFile(compressed);
+
+                if (isPortrait) {
+                    toast.success('Imagem rotacionada para paisagem e comprimida!');
+                } else {
+                    toast.success('Imagem comprimida!');
+                }
+            } else if (file.type.startsWith('video/')) {
+                // Create video preview
+                const url = URL.createObjectURL(file);
+                setVideoPreview(url);
+                setSelectedFile(file);
+                toast.success('Vídeo selecionado!');
+            } else {
+                setSelectedFile(file);
+            }
+        } catch (error) {
+            console.error('Error selecting file:', error);
+            toast.error('Erro ao selecionar arquivo. Tente novamente.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -506,7 +514,16 @@ function AdminContent() {
                                     {/* Media Type */}
                                     <div>
                                         <Label>Tipo de Mídia</Label>
-                                        <Select value={mediaType} onValueChange={(v) => setMediaType(v as MediaType)}>
+                                    <Select 
+                                        value={mediaType} 
+                                        onValueChange={(v) => {
+                                            // Reset file selection when changing type
+                                            setSelectedFile(null);
+                                            setVideoPreview(null);
+                                            if (fileInputRef.current) fileInputRef.current.value = '';
+                                            setMediaType(v as MediaType);
+                                        }}
+                                    >
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -548,6 +565,7 @@ function AdminContent() {
                                         <div>
                                             <Label>Arquivo</Label>
                                             <Input
+                                                key={`file-input-${mediaType}`}
                                                 ref={fileInputRef}
                                                 type="file"
                                                 accept={mediaType === 'image' ? 'image/*' : 'video/*'}
