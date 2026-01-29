@@ -517,11 +517,21 @@ function AdminContent() {
                                     <Select 
                                         value={mediaType} 
                                         onValueChange={(v) => {
-                                            // Reset file selection when changing type
-                                            setSelectedFile(null);
-                                            setVideoPreview(null);
-                                            if (fileInputRef.current) fileInputRef.current.value = '';
-                                            setMediaType(v as MediaType);
+                                            try {
+                                                console.log('Changing media type to:', v);
+                                                // Reset file selection when changing type
+                                                setSelectedFile(null);
+                                                setVideoPreview(null);
+                                                // Use setTimeout to avoid DOM conflicts with portal
+                                                setTimeout(() => {
+                                                    if (fileInputRef.current) {
+                                                        fileInputRef.current.value = '';
+                                                    }
+                                                }, 0);
+                                                setMediaType(v as MediaType);
+                                            } catch (error) {
+                                                console.error('Error changing media type:', error);
+                                            }
                                         }}
                                     >
                                             <SelectTrigger>
