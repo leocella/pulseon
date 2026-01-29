@@ -21,7 +21,7 @@ export function usePanelMedia() {
     queryKey: ['panelMedia', UNIDADE],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('panel_media' as any)
+        .from('panel_media')
         .select('*')
         .eq('unidade', UNIDADE)
         .order('order_index', { ascending: true });
@@ -63,30 +63,58 @@ export function useUploadMedia() {
 
       // Upload file to Supabase Storage if it's a file
       if (file && type !== 'external') {
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split('.').pop()?.toLowerCase();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `${sanitizedUnidade}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('panel-media' as any)
+        console.log(`Uploading ${type} file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB, type: ${file.type}`);
+
+        // Determine content type
+        let contentType = file.type;
+        if (!contentType || contentType === 'application/octet-stream') {
+          // Fallback content types based on extension
+          const mimeTypes: Record<string, string> = {
+            'mp4': 'video/mp4',
+            'webm': 'video/webm',
+            'mov': 'video/quicktime',
+            'avi': 'video/x-msvideo',
+            'mkv': 'video/x-matroska',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+          };
+          contentType = mimeTypes[fileExt || ''] || 'application/octet-stream';
+        }
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('panel-media')
           .upload(filePath, file, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType,
           });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error(`Falha no upload: ${uploadError.message}`);
+        }
+
+        console.log('Upload successful:', uploadData);
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
-          .from('panel-media' as any)
+          .from('panel-media')
           .getPublicUrl(filePath);
 
         src = publicUrl;
+        console.log('Public URL:', src);
       }
 
       // Get current max order_index
       const { data: maxOrderData } = await supabase
-        .from('panel_media' as any)
+        .from('panel_media')
         .select('order_index')
         .eq('unidade', UNIDADE)
         .order('order_index', { ascending: false })
@@ -95,9 +123,11 @@ export function useUploadMedia() {
 
       const nextOrder = ((maxOrderData as unknown as { order_index: number })?.order_index || 0) + 1;
 
+      console.log('Inserting media record:', { type, src: src.substring(0, 50) + '...', alt, duration, order_index: nextOrder });
+
       // Insert media record
       const { data, error } = await supabase
-        .from('panel_media' as any)
+        .from('panel_media')
         .insert({
           unidade: UNIDADE,
           type,
@@ -110,11 +140,19 @@ export function useUploadMedia() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database insert error:', error);
+        throw new Error(`Falha ao salvar mídia: ${error.message}`);
+      }
+
+      console.log('Media record created:', data);
       return data as unknown as PanelMediaItem;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panelMedia'] });
+    },
+    onError: (error) => {
+      console.error('Upload mutation error:', error);
     },
   });
 }
@@ -142,7 +180,7 @@ export function useUpdateMedia() {
       if (duration !== undefined) updateData.duration = duration;
 
       const { data, error } = await supabase
-        .from('panel_media' as any)
+        .from('panel_media')
         .update(updateData)
         .eq('id', id)
         .select()
@@ -165,7 +203,7 @@ export function useDeleteMedia() {
     mutationFn: async (id: string) => {
       // Get media info to delete file from storage if needed
       const { data: mediaItem } = await supabase
-        .from('panel_media' as any)
+        .from('panel_media')
         .select('*')
         .eq('id', id)
         .single();
@@ -181,14 +219,14 @@ export function useDeleteMedia() {
           // filePath might contain UNIDADE/filename which might be encoded
           const decodedPath = decodeURIComponent(filePath);
           await supabase.storage
-            .from('panel-media' as any)
+            .from('panel-media')
             .remove([decodedPath]);
         }
       }
 
       // Delete database record
       const { error } = await supabase
-        .from('panel_media' as any)
+        .from('panel_media')
         .delete()
         .eq('id', id);
 

@@ -247,9 +247,10 @@ function AdminContent() {
             toast.success('Mídia adicionada com sucesso!');
             setIsAddDialogOpen(false);
             resetForm();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding media:', error);
-            toast.error('Erro ao adicionar mídia');
+            const errorMessage = error?.message || 'Erro desconhecido';
+            toast.error(`Erro ao adicionar mídia: ${errorMessage}`);
         }
     };
 
@@ -368,8 +369,9 @@ function AdminContent() {
                 });
 
                 successCount++;
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`Error uploading ${file.name}:`, error);
+                toast.error(`Erro em ${file.name}: ${error?.message || 'Erro desconhecido'}`);
                 errorCount++;
             }
         }
