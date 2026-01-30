@@ -41,7 +41,11 @@ const App = () => (
               <Secretaria />
             </ProtectedRoute>
           } />
-          <Route path="/historico" element={<Historico />} />
+          <Route path="/historico" element={
+            <ProtectedRoute requiredRole="secretary">
+              <Historico />
+            </ProtectedRoute>
+          } />
           <Route path="/admin" element={
             <ProtectedRoute requiredRole="admin">
               <Admin />
