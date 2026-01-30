@@ -1,19 +1,46 @@
-import { PRINT_SERVICE_URL } from './config';
 import type { PrintPayload } from '@/types/queue';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+// Obtém URL do servidor de impressão do localStorage ou usa padrão
+function getPrintServerUrl(): string {
+  try {
+    const saved = localStorage.getItem('totem_print_server_ip');
+    if (saved) {
+      const { ip, port } = JSON.parse(saved);
+      return `http://${ip}:${port}`;
+    }
+  } catch (e) {
+    console.error('[PrintService] Erro ao ler configuração:', e);
+  }
+  // Fallback para variável de ambiente ou localhost
+  return import.meta.env.VITE_PRINT_SERVICE_URL?.replace('/print', '') || 'http://localhost:3001';
+}
+
+// Mapeia tipo para prefixo legível
+function getTipoDisplay(tipo: string): string {
+  const tipoMap: Record<string, string> = {
+    'Normal': 'NORMAL',
+    'Preferencial': 'PREFERENCIAL',
+    'Retirada de Laudo': 'RETIRADA DE LAUDO',
+  };
+  return tipoMap[tipo] || tipo.toUpperCase();
+}
+
 export async function printTicket(payload: PrintPayload, retries = 2): Promise<boolean> {
   const now = new Date();
+  const baseUrl = getPrintServerUrl();
+  const printUrl = `${baseUrl}/print`;
   
   const printData = {
     id_senha: payload.id_senha,
-    tipo: payload.tipo,
+    tipo: getTipoDisplay(payload.tipo),
     unidade: payload.unidade,
     hora: format(now, 'HH:mm'),
     data: format(now, 'dd/MM/yyyy', { locale: ptBR }),
   };
 
+  console.log('[PrintService] URL do servidor:', printUrl);
   console.log('[PrintService] Enviando para impressora:', printData);
 
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -21,7 +48,7 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
       
-      const response = await fetch(PRINT_SERVICE_URL, {
+      const response = await fetch(printUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,10 +88,11 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
 // Verificar se o servidor de impressão está online
 export async function checkPrintServer(): Promise<boolean> {
   try {
+    const baseUrl = getPrintServerUrl();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
     
-    const response = await fetch(PRINT_SERVICE_URL.replace('/print', '/health'), {
+    const response = await fetch(`${baseUrl}/health`, {
       signal: controller.signal,
     });
     

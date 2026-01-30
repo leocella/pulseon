@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Ticket, UserCheck, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { UserCheck, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useGenerateTicket } from '@/hooks/useQueue';
@@ -7,9 +7,14 @@ import { printTicket } from '@/lib/printService';
 import { UNIDADE } from '@/lib/config';
 import { TicketNumber } from '@/components/TicketNumber';
 import { TicketBadge } from '@/components/TicketBadge';
+import { TotemSettings } from '@/components/TotemSettings';
 import type { TipoAtendimento } from '@/types/queue';
 
 type TotemState = 'idle' | 'loading' | 'success' | 'error' | 'print_error';
+
+// Sequência secreta: 5 toques no logo em 3 segundos
+const SECRET_TAP_COUNT = 5;
+const SECRET_TAP_TIMEOUT = 3000;
 
 export default function Totem() {
   const [state, setState] = useState<TotemState>('idle');
@@ -18,6 +23,44 @@ export default function Totem() {
     tipo: TipoAtendimento;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+  const [lastTapTime, setLastTapTime] = useState(0);
+
+  // Handler para toques secretos no logo
+  const handleLogoTap = useCallback(() => {
+    const now = Date.now();
+    
+    if (now - lastTapTime > SECRET_TAP_TIMEOUT) {
+      // Reset se passou muito tempo
+      setTapCount(1);
+    } else {
+      setTapCount(prev => prev + 1);
+    }
+    
+    setLastTapTime(now);
+  }, [lastTapTime]);
+
+  // Verificar se atingiu número de toques
+  useEffect(() => {
+    if (tapCount >= SECRET_TAP_COUNT) {
+      setShowSettings(true);
+      setTapCount(0);
+    }
+  }, [tapCount]);
+
+  // Atalho de teclado: Ctrl+Shift+P
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        setShowSettings(true);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const generateTicket = useGenerateTicket();
 
@@ -65,12 +108,21 @@ export default function Totem() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex flex-col items-center justify-center p-6">
+      {/* Settings Modal */}
+      <TotemSettings 
+        open={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
+
       {/* Header */}
       <div className="text-center mb-12">
+        {/* Logo com área clicável secreta */}
         <img 
           src="/biocenter-logo.jpg" 
           alt="Biocenter Logo" 
-          className="h-24 md:h-32 mx-auto mb-6 object-contain"
+          className="h-24 md:h-32 mx-auto mb-6 object-contain cursor-default select-none"
+          onClick={handleLogoTap}
+          draggable={false}
         />
         <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
           Retire sua Senha
