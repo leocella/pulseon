@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,41 +24,70 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner position="top-center" />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={
-            <ProtectedRoute requiredRole="admin">
-              <Index />
-            </ProtectedRoute>
-          } />
-          <Route path="/totem" element={<Totem />} />
-          <Route path="/painel" element={<Painel />} />
-          <Route path="/secretaria" element={
-            <ProtectedRoute requiredRole="secretary">
-              <Secretaria />
-            </ProtectedRoute>
-          } />
-          <Route path="/historico" element={
-            <ProtectedRoute requiredRole="secretary">
-              <Historico />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin" element={
-            <ProtectedRoute requiredRole="admin">
-              <Admin />
-            </ProtectedRoute>
-          } />
-          <Route path="/login" element={<Login />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Global handler for unhandled promise rejections
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", event.reason);
+      // Prevent the default crash behavior
+      event.preventDefault();
+    };
+
+    const handleError = (event: ErrorEvent) => {
+      console.error("Uncaught error:", event.error);
+      // Prevent the default crash behavior for certain errors
+      if (event.message?.includes('removeChild') || event.message?.includes('NotFoundError')) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection);
+    window.addEventListener("error", handleError);
+
+    return () => {
+      window.removeEventListener("unhandledrejection", handleRejection);
+      window.removeEventListener("error", handleError);
+    };
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner position="top-center" />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/totem" element={<Totem />} />
+              <Route path="/painel" element={<Painel />} />
+              <Route path="/secretaria" element={
+                <ProtectedRoute requiredRole="secretary">
+                  <Secretaria />
+                </ProtectedRoute>
+              } />
+              <Route path="/historico" element={
+                <ProtectedRoute requiredRole="secretary">
+                  <Historico />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Admin />
+                </ProtectedRoute>
+              } />
+              <Route path="/login" element={<Login />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;
