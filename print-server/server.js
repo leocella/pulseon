@@ -1,208 +1,156 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { exec, execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const escpos = require('escpos');
+escpos.USB = require('escpos-usb');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Nome da impressora USB local instalada no Windows
-// Defina via variável de ambiente: PRINTER_NAME=KPOS_80
-const PRINTER_NAME = process.env.PRINTER_NAME || 'KPOS_80';
+const USB_VID = parseInt(process.env.USB_VID, 16) || 0x0416;
+const USB_PID = parseInt(process.env.USB_PID, 16) || 0x5011;
 
 app.use(cors());
 app.use(express.json());
 
-// Comandos ESC/POS
-const ESC = '\x1B';
-const GS = '\x1D';
+/**
+ * Conecta à impressora USB e retorna device + printer
+ */
+function getUSBPrinter() {
+  const device = new escpos.USB(USB_VID, USB_PID);
+  const printer = new escpos.Printer(device, { encoding: 'CP860' });
+  return { device, printer };
+}
 
-const ESCPOS = {
-  INIT: ESC + '@',                    // Inicializar impressora
-  ALIGN_CENTER: ESC + 'a' + '\x01',   // Alinhar centro
-  ALIGN_LEFT: ESC + 'a' + '\x00',     // Alinhar esquerda
-  BOLD_ON: ESC + 'E' + '\x01',        // Negrito ligado
-  BOLD_OFF: ESC + 'E' + '\x00',       // Negrito desligado
-  FONT_NORMAL: ESC + '!' + '\x00',    // Fonte normal
-  FONT_LARGE: ESC + '!' + '\x30',     // Fonte grande (double height + double width)
-  FONT_MEDIUM: ESC + '!' + '\x10',    // Fonte média (double height)
-  FEED_LINE: '\n',                     // Nova linha
-  FEED_LINES: ESC + 'd' + '\x03',     // Avançar 3 linhas
-  CUT_PAPER: GS + 'V' + '\x00',       // Corte total
-  CUT_PARTIAL: GS + 'V' + '\x01',     // Corte parcial
-};
-
-function buildTicket(data) {
+/**
+ * Imprime um ticket com os dados fornecidos
+ */
+function printTicket(data, callback) {
   const { id_senha, tipo, data: dataStr, hora } = data;
 
-  const divider = '--------------------------------';
-
-  let ticket = '';
-
-  // Inicializar impressora
-  ticket += ESCPOS.INIT;
-
-  // Cabeçalho centralizado
-  ticket += ESCPOS.ALIGN_CENTER;
-  ticket += ESCPOS.BOLD_ON;
-  ticket += divider + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FONT_MEDIUM;
-  ticket += 'BIOCENTER' + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FONT_NORMAL;
-  ticket += divider + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FEED_LINE;
-
-  // Senha - fonte grande
-  ticket += 'SENHA' + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FONT_LARGE;
-  ticket += id_senha + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FONT_NORMAL;
-  ticket += ESCPOS.FEED_LINE;
-
-  // Tipo de atendimento
-  ticket += 'TIPO:' + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FONT_MEDIUM;
-  ticket += tipo.toUpperCase() + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FONT_NORMAL;
-  ticket += ESCPOS.FEED_LINE;
-
-  // Data e Hora
-  ticket += 'DATA:' + ESCPOS.FEED_LINE;
-  ticket += dataStr + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FEED_LINE;
-  ticket += 'HORA:' + ESCPOS.FEED_LINE;
-  ticket += hora + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.FEED_LINE;
-
-  // Rodapé
-  ticket += divider + ESCPOS.FEED_LINE;
-  ticket += ESCPOS.BOLD_OFF;
-  ticket += 'Aguarde ser chamado no painel' + ESCPOS.FEED_LINE;
-  ticket += divider + ESCPOS.FEED_LINE;
-
-  // Alimentar papel e cortar
-  ticket += ESCPOS.FEED_LINES;
-  ticket += ESCPOS.CUT_PARTIAL;
-
-  return ticket;
-}
-
-function printRaw(content, callback) {
-  const tempFile = path.join(os.tmpdir(), `ticket_${Date.now()}.bin`);
-
-  // escreve ESC/POS em binário real
-  fs.writeFileSync(tempFile, Buffer.from(content, 'binary'));
-
-  // PowerShell robusto: envia bytes direto para impressora local
-  const psCommand = `
-  $bytes = [System.IO.File]::ReadAllBytes('${tempFile.replace(/\\/g, '\\\\')}')
-  $printer = '${PRINTER_NAME || ''}'
-  if ([string]::IsNullOrEmpty($printer)) {
-    $job = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c copy /b "${tempFile}" PRN' -NoNewWindow -PassThru -Wait
-  } else {
-    $printerPath = "Microsoft.PowerShell.Utility\\Out-Printer"
-    $ms = New-Object System.IO.MemoryStream(,$bytes)
-    $sr = New-Object System.IO.StreamReader($ms)
-    $content = $sr.ReadToEnd()
-    $content | Out-Printer -Name $printer
-  }
-  `;
-
-  exec(
-    `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psCommand}"`,
-    { windowsHide: true },
-    (error) => {
-      try { fs.unlinkSync(tempFile); } catch (e) { }
-      callback(error || null);
-    }
-  );
-}
-
-/**
- * Método alternativo: Impressão via RawPrint (porta física)
- * Útil se a impressora estiver mapeada para uma porta específica
- * 
- * @param {string} content - Conteúdo ESC/POS
- * @param {string} portName - Nome da porta (ex: USB001, COM1, LPT1)
- * @param {function} callback - Callback
- */
-function printToPort(content, portName, callback) {
-  const tempFile = path.join(os.tmpdir(), `ticket_${Date.now()}.bin`);
+  let device, printer;
 
   try {
-    fs.writeFileSync(tempFile, content, 'binary');
-
-    // copy /b para porta física (USB001, COM1, LPT1)
-    exec(`copy /b "${tempFile}" ${portName}`, { windowsHide: true, timeout: 30000 }, (error) => {
-      cleanupTempFile(tempFile);
-
-      if (error) {
-        console.error(`Erro impressão via porta ${portName}:`, error);
-        callback(error);
-      } else {
-        console.log(`Impressão enviada para porta: ${portName}`);
-        callback(null);
-      }
-    });
+    const usb = getUSBPrinter();
+    device = usb.device;
+    printer = usb.printer;
   } catch (err) {
-    cleanupTempFile(tempFile);
-    callback(err);
+    return callback(new Error(`Impressora USB não encontrada (VID:${USB_VID.toString(16)} PID:${USB_PID.toString(16)}): ${err.message}`));
   }
-}
 
-/**
- * Limpa arquivo temporário de forma segura
- */
-function cleanupTempFile(filePath) {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+  device.open((err) => {
+    if (err) {
+      return callback(new Error(`Erro ao abrir dispositivo USB: ${err.message}`));
     }
-  } catch (e) {
-    console.error('Aviso: Erro ao limpar arquivo temporário:', e.message);
-  }
+
+    try {
+      printer
+        .font('A')
+        .align('CT')
+        .style('B')
+        .text('--------------------------------')
+        .size(1, 1)
+        .text('BIOCENTER')
+        .size(0, 0)
+        .text('--------------------------------')
+        .text('')
+        .text('SENHA')
+        .size(2, 2)
+        .text(id_senha)
+        .size(0, 0)
+        .text('')
+        .text('TIPO:')
+        .size(1, 1)
+        .text(tipo.toUpperCase())
+        .size(0, 0)
+        .text('')
+        .text('DATA:')
+        .text(dataStr)
+        .text('')
+        .text('HORA:')
+        .text(hora)
+        .text('')
+        .text('--------------------------------')
+        .style('NORMAL')
+        .text('Aguarde ser chamado no painel')
+        .text('--------------------------------')
+        .feed(3)
+        .cut()
+        .close(() => {
+          callback(null);
+        });
+    } catch (printErr) {
+      callback(new Error(`Erro durante impressão: ${printErr.message}`));
+    }
+  });
 }
 
-/**
- * Verifica se a impressora está disponível no Windows
- */
-function checkPrinterAvailable() {
-  try {
-    const result = execSync(
-      `powershell -NoProfile -Command "Get-Printer -Name '${PRINTER_NAME}' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name"`,
-      { encoding: 'utf8', windowsHide: true, timeout: 10000 }
-    ).trim();
+// GET /health - Status do servidor
+app.get('/health', (req, res) => {
+  let printerStatus = 'unknown';
+  let printerError = null;
 
-    return result === PRINTER_NAME;
-  } catch (e) {
-    return false;
-  }
-}
-
-/**
- * Lista impressoras disponíveis no Windows
- */
-function listPrinters() {
   try {
-    const result = execSync(
-      `powershell -NoProfile -Command "Get-Printer | Select-Object -ExpandProperty Name"`,
-      { encoding: 'utf8', windowsHide: true, timeout: 10000 }
+    const devices = escpos.USB.findPrinter();
+    const found = devices.some(d =>
+      d.deviceDescriptor.idVendor === USB_VID &&
+      d.deviceDescriptor.idProduct === USB_PID
     );
-    return result.trim().split('\n').map(p => p.trim()).filter(p => p);
-  } catch (e) {
-    console.error('Erro ao listar impressoras:', e.message);
-    return [];
+    printerStatus = found ? 'connected' : 'not_found';
+  } catch (err) {
+    printerStatus = 'error';
+    printerError = err.message;
   }
-}
 
-// Endpoint de impressão
+  res.json({
+    status: printerStatus === 'connected' ? 'ok' : 'warning',
+    timestamp: new Date().toISOString(),
+    usb: {
+      vid: `0x${USB_VID.toString(16).padStart(4, '0')}`,
+      pid: `0x${USB_PID.toString(16).padStart(4, '0')}`
+    },
+    printer: {
+      status: printerStatus,
+      error: printerError
+    }
+  });
+});
+
+// GET /test - Imprime ticket de teste
+app.get('/test', (req, res) => {
+  console.log('Executando teste de impressão USB...');
+
+  const now = new Date();
+  const testData = {
+    id_senha: 'T001',
+    tipo: 'TESTE',
+    data: now.toLocaleDateString('pt-BR'),
+    hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  };
+
+  printTicket(testData, (err) => {
+    if (err) {
+      console.error('Erro no teste:', err.message);
+      res.status(500).json({
+        success: false,
+        error: err.message,
+        usb: { vid: `0x${USB_VID.toString(16)}`, pid: `0x${USB_PID.toString(16)}` }
+      });
+    } else {
+      console.log('Teste de impressão concluído!');
+      res.json({
+        success: true,
+        message: 'Ticket de teste impresso',
+        usb: { vid: `0x${USB_VID.toString(16)}`, pid: `0x${USB_PID.toString(16)}` }
+      });
+    }
+  });
+});
+
+// POST /print - Imprime senha
 app.post('/print', (req, res) => {
   console.log('Recebido pedido de impressão:', req.body);
 
-  const { id_senha, tipo, unidade, hora } = req.body;
+  const { id_senha, tipo, hora } = req.body;
 
   if (!id_senha || !tipo) {
     return res.status(400).json({
@@ -211,118 +159,66 @@ app.post('/print', (req, res) => {
     });
   }
 
-  // Formatar data atual
   const now = new Date();
-  const dataFormatada = now.toLocaleDateString('pt-BR');
-  const horaFormatada = hora || now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
   const ticketData = {
     id_senha,
     tipo,
-    data: dataFormatada,
-    hora: horaFormatada
+    data: now.toLocaleDateString('pt-BR'),
+    hora: hora || now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   };
 
-  const ticketContent = buildTicket(ticketData);
-
-  // Imprimir diretamente na impressora USB local
-  printRaw(ticketContent, (error) => {
-    if (error) {
+  printTicket(ticketData, (err) => {
+    if (err) {
+      console.error('Erro na impressão:', err.message);
       res.status(500).json({
         success: false,
-        error: error.message,
-        printer: PRINTER_NAME
+        error: err.message
       });
     } else {
+      console.log('Impressão concluída:', id_senha);
       res.json({
         success: true,
         message: 'Impressão enviada',
-        printer: PRINTER_NAME
+        id_senha
       });
     }
   });
 });
 
-// Endpoint de teste
-app.get('/test', (req, res) => {
-  console.log('Executando teste de impressão...');
-
-  const testTicket = buildTicket({
-    id_senha: 'T001',
-    tipo: 'TESTE',
-    data: new Date().toLocaleDateString('pt-BR'),
-    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  });
-
-  printRaw(testTicket, (error) => {
-    if (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        printer: PRINTER_NAME
-      });
-    } else {
-      res.json({
-        success: true,
-        message: 'Teste de impressão enviado',
-        printer: PRINTER_NAME
-      });
-    }
-  });
-});
-
-// Health check com verificação de impressora
-app.get('/health', (req, res) => {
-  const printerAvailable = checkPrinterAvailable();
-
-  res.json({
-    status: printerAvailable ? 'ok' : 'warning',
-    timestamp: new Date().toISOString(),
-    printer: PRINTER_NAME,
-    printerAvailable: printerAvailable,
-    message: printerAvailable
-      ? 'Impressora disponível'
-      : `Impressora '${PRINTER_NAME}' não encontrada no sistema`
-  });
-});
-
-// Listar impressoras disponíveis
-app.get('/printers', (req, res) => {
-  const printers = listPrinters();
-  const currentAvailable = printers.includes(PRINTER_NAME);
-
-  res.json({
-    configured: PRINTER_NAME,
-    configuredAvailable: currentAvailable,
-    available: printers
-  });
-});
-
-// Inicialização do servidor
+// Iniciar servidor
 app.listen(PORT, () => {
-  const printerAvailable = checkPrinterAvailable();
-  const printers = listPrinters();
+  let printerFound = false;
+
+  try {
+    const devices = escpos.USB.findPrinter();
+    printerFound = devices.some(d =>
+      d.deviceDescriptor.idVendor === USB_VID &&
+      d.deviceDescriptor.idProduct === USB_PID
+    );
+  } catch (e) { }
 
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
-║     BIOCENTER - Servidor de Impressão Térmica         ║
+║     BIOCENTER - Servidor de Impressão USB Direto      ║
 ╠═══════════════════════════════════════════════════════╣
-║  Servidor rodando em: http://localhost:${PORT}            ║
-║  Impressora USB: ${PRINTER_NAME.padEnd(35)}  ║
-║  Status: ${(printerAvailable ? '✓ Disponível' : '✗ Não encontrada').padEnd(43)}  ║
+║  Servidor: http://localhost:${PORT}                       ║
+║  USB VID:  0x${USB_VID.toString(16).padStart(4, '0')}                                      ║
+║  USB PID:  0x${USB_PID.toString(16).padStart(4, '0')}                                      ║
+║  Status:   ${(printerFound ? '✓ Impressora conectada' : '✗ Impressora não encontrada').padEnd(39)} ║
 ║                                                       ║
 ║  Endpoints:                                           ║
-║    POST /print    - Imprimir senha                    ║
-║    GET  /test     - Teste de impressão                ║
-║    GET  /health   - Status do servidor                ║
-║    GET  /printers - Listar impressoras                ║
+║    GET  /health  - Status do servidor                 ║
+║    GET  /test    - Imprime ticket de teste            ║
+║    POST /print   - Imprime senha                      ║
 ╚═══════════════════════════════════════════════════════╝
   `);
 
-  if (!printerAvailable) {
-    console.log(`⚠ AVISO: Impressora '${PRINTER_NAME}' não encontrada!`);
-    console.log('  Impressoras disponíveis:');
-    printers.forEach(p => console.log(`    - ${p}`));
-    console.log(`\n  Configure a variável de ambiente PRINTER_NAME com uma das impressoras acima.\n`);
+  if (!printerFound) {
+    console.log('⚠ AVISO: Impressora USB não detectada!');
+    console.log('  Verifique:');
+    console.log('  - Cabo USB conectado');
+    console.log('  - Impressora ligada');
+    console.log(`  - VID/PID corretos no .env (atual: 0x${USB_VID.toString(16)}/0x${USB_PID.toString(16)})`);
+    console.log('');
   }
 });
