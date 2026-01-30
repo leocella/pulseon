@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { exec, execSync } = require('child_process');
@@ -89,56 +90,35 @@ function buildTicket(data) {
   return ticket;
 }
 
-/**
- * Imprime dados raw (binários ESC/POS) diretamente para impressora USB local
- * Usa PowerShell com Out-Printer -Name para envio direto sem diálogo/compartilhamento
- * 
- * @param {string} content - Conteúdo ESC/POS a ser impresso
- * @param {function} callback - Callback (error) => void
- */
 function printRaw(content, callback) {
   const tempFile = path.join(os.tmpdir(), `ticket_${Date.now()}.bin`);
 
-  try {
-    // Escrever conteúdo binário no arquivo temporário
-    fs.writeFileSync(tempFile, content, 'binary');
+  // escreve ESC/POS em binário real
+  fs.writeFileSync(tempFile, Buffer.from(content, 'binary'));
 
-    // PowerShell: Lê o arquivo como bytes e envia direto para a impressora local
-    // -Encoding Byte preserva os comandos ESC/POS
-    // -Name especifica a impressora USB local (sem compartilhamento)
-    const escapedPath = tempFile.replace(/\\/g, '\\\\').replace(/'/g, "''");
-    const escapedPrinter = PRINTER_NAME.replace(/'/g, "''");
-
-    const psCommand = `
-      $bytes = [System.IO.File]::ReadAllBytes('${escapedPath}')
-      $stream = [System.IO.MemoryStream]::new($bytes)
-      $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::GetEncoding(437))
-      $content = $reader.ReadToEnd()
-      $reader.Close()
-      $stream.Close()
-      $content | Out-Printer -Name '${escapedPrinter}'
-    `.replace(/\n/g, ' ');
-
-    const printCommand = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psCommand}"`;
-
-    exec(printCommand, { windowsHide: true, timeout: 30000 }, (error, stdout, stderr) => {
-      // Limpar arquivo temporário
-      cleanupTempFile(tempFile);
-
-      if (error) {
-        console.error('Erro de impressão:', error.message);
-        if (stderr) console.error('Stderr:', stderr);
-        callback(new Error(`Falha na impressão: ${error.message}`));
-      } else {
-        console.log('Impressão enviada com sucesso para:', PRINTER_NAME);
-        callback(null);
-      }
-    });
-  } catch (err) {
-    cleanupTempFile(tempFile);
-    console.error('Erro ao preparar impressão:', err);
-    callback(err);
+  // PowerShell robusto: envia bytes direto para impressora local
+  const psCommand = `
+  $bytes = [System.IO.File]::ReadAllBytes('${tempFile.replace(/\\/g, '\\\\')}')
+  $printer = '${PRINTER_NAME || ''}'
+  if ([string]::IsNullOrEmpty($printer)) {
+    $job = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c copy /b "${tempFile}" PRN' -NoNewWindow -PassThru -Wait
+  } else {
+    $printerPath = "Microsoft.PowerShell.Utility\\Out-Printer"
+    $ms = New-Object System.IO.MemoryStream(,$bytes)
+    $sr = New-Object System.IO.StreamReader($ms)
+    $content = $sr.ReadToEnd()
+    $content | Out-Printer -Name $printer
   }
+  `;
+
+  exec(
+    `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psCommand}"`,
+    { windowsHide: true },
+    (error) => {
+      try { fs.unlinkSync(tempFile); } catch (e) { }
+      callback(error || null);
+    }
+  );
 }
 
 /**
