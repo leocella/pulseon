@@ -40,14 +40,17 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
   const baseUrl = getPrintServerUrl();
   const printUrl = `${baseUrl}/print`;
 
-  // Sempre prioriza o número humano (ex.: A006). Em alguns fluxos antigos,
-  // o backend pode esperar a chave `senha`, então enviamos ambas.
-  const ticketNumber = (payload as any)?.id_senha ?? '';
+  // Garante que o número da senha nunca seja undefined/null
+  const ticketNumber = payload?.id_senha || (payload as any)?.senha || 'ERRO';
+
+  if (ticketNumber === 'ERRO' || !ticketNumber) {
+    console.error('[PrintService] ERRO: id_senha está undefined!', payload);
+    return false;
+  }
 
   const printData = {
     id_senha: ticketNumber,
     // Retrocompatibilidade: alguns print-servers antigos usam `senha`
-    // para imprimir o número. Garantimos que seja o mesmo número humano.
     senha: ticketNumber,
     tipo: getTipoDisplay(payload.tipo),
     unidade: stripDiacritics(payload.unidade),
@@ -57,7 +60,7 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
   };
 
   console.log('[PrintService] URL do servidor:', printUrl);
-  console.log('[PrintService] Enviando para impressora:', printData);
+  console.log('[PrintService] Enviando para impressora:', JSON.stringify(printData));
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -75,12 +78,20 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
 
       clearTimeout(timeoutId);
 
+      // Verificar tipo de resposta antes de parsear
+      const contentType = response.headers.get('content-type') || '';
+
       if (response.ok) {
-        const result = await response.json();
-        console.log('[PrintService] Impressão bem-sucedida:', result);
+        if (contentType.includes('application/json')) {
+          const result = await response.json();
+          console.log('[PrintService] Impressão bem-sucedida:', result);
+        } else {
+          console.log('[PrintService] Impressão OK (resposta não-JSON)');
+        }
         return true;
       } else {
-        console.warn(`[PrintService] Tentativa ${attempt + 1} falhou: HTTP ${response.status}`);
+        const errorText = await response.text();
+        console.warn(`[PrintService] Tentativa ${attempt + 1} falhou: HTTP ${response.status}`, errorText.substring(0, 200));
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
