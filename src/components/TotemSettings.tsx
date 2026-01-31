@@ -91,29 +91,47 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
     setTesting(true);
     setTestResult(null);
     
+    const url = `http://${ip}:${port}/health`;
+    console.log('[TotemSettings] Testando conexão:', url);
+    
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch(`http://${ip}:${port}/health`, {
+      const response = await fetch(url, {
         signal: controller.signal,
+        mode: 'cors',
       });
       
       clearTimeout(timeoutId);
       
+      console.log('[TotemSettings] Response status:', response.status);
+      
       if (response.ok) {
+        const data = await response.json();
+        console.log('[TotemSettings] Response data:', data);
         setTestResult('success');
-        toast.success('Conexão OK! Servidor de impressão respondendo.');
+        
+        if (data.printer?.status === 'offline') {
+          toast.success('Servidor OK! (Impressora offline - verifique conexão da impressora)');
+        } else {
+          toast.success('Conexão OK! Servidor e impressora respondendo.');
+        }
       } else {
         setTestResult('error');
+        const text = await response.text();
+        console.error('[TotemSettings] Error response:', text);
         toast.error(`Servidor respondeu com erro: ${response.status}`);
       }
     } catch (error) {
+      console.error('[TotemSettings] Connection error:', error);
       setTestResult('error');
       if (error instanceof Error && error.name === 'AbortError') {
-        toast.error('Timeout: servidor não respondeu');
+        toast.error('Timeout: servidor não respondeu em 5s');
+      } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        toast.error('CORS/Rede: servidor não acessível. Verifique IP e firewall.');
       } else {
-        toast.error('Não foi possível conectar ao servidor');
+        toast.error(`Erro: ${error instanceof Error ? error.message : 'Falha na conexão'}`);
       }
     } finally {
       setTesting(false);
