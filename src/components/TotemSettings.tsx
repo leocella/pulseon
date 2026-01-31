@@ -12,12 +12,43 @@ const STORAGE_KEY = 'totem_print_server_ip';
 const DEFAULT_IP = 'localhost';
 const DEFAULT_PORT = '3000';
 
+function normalizeHostAndPort(rawIp: string, rawPort: string): { ip: string; port: string } {
+  let ip = (rawIp || '').trim();
+  let port = (rawPort || '').trim();
+
+  // Remove protocolo e qualquer caminho
+  ip = ip.replace(/^https?:\/\//i, '');
+  ip = ip.split('/')[0];
+  ip = ip.replace(/\s+/g, '');
+
+  // Se o usuário digitar "IP:PORTA" no campo IP, extrai automaticamente a porta
+  // (IPv6 não é suportado aqui — não é o caso típico deste cenário.)
+  const lastColon = ip.lastIndexOf(':');
+  if (lastColon > -1) {
+    const maybePort = ip.slice(lastColon + 1);
+    const host = ip.slice(0, lastColon);
+    if (/^\d+$/.test(maybePort)) {
+      ip = host;
+      port = maybePort;
+    }
+  }
+
+  // Limita a porta a dígitos (evita "3000/" etc.)
+  port = port.replace(/\D+/g, '');
+
+  return {
+    ip: ip || DEFAULT_IP,
+    port: port || DEFAULT_PORT,
+  };
+}
+
 export function getPrintServerUrl(): string {
   try {
     const savedIp = localStorage.getItem(STORAGE_KEY);
     if (savedIp) {
-      const { ip, port } = JSON.parse(savedIp);
-      return `http://${ip}:${port}`;
+      const parsed = JSON.parse(savedIp);
+      const normalized = normalizeHostAndPort(parsed?.ip, parsed?.port);
+      return `http://${normalized.ip}:${normalized.port}`;
     }
   } catch (e) {
     console.error('Erro ao ler IP do localStorage:', e);
@@ -39,6 +70,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
   const [port, setPort] = useState(DEFAULT_PORT);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Carregar configurações salvas
   useEffect(() => {
@@ -47,8 +79,9 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const { ip: savedIp, port: savedPort } = JSON.parse(saved);
-          setIp(savedIp || DEFAULT_IP);
-          setPort(savedPort || DEFAULT_PORT);
+          const normalized = normalizeHostAndPort(savedIp || DEFAULT_IP, savedPort || DEFAULT_PORT);
+          setIp(normalized.ip);
+          setPort(normalized.port);
         }
       } catch (e) {
         console.error('Erro ao carregar configurações:', e);
@@ -63,6 +96,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
       setPassword('');
       setPasswordError(false);
       setTestResult(null);
+      setDebugInfo('');
     }
   }, [open]);
 
@@ -79,10 +113,13 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
 
   const handleSave = () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ip, port }));
+      const normalized = normalizeHostAndPort(ip, port);
+      setIp(normalized.ip);
+      setPort(normalized.port);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ip: normalized.ip, port: normalized.port }));
       toast.success('Configurações salvas com sucesso!');
       onClose();
-    } catch (e) {
+    } catch {
       toast.error('Erro ao salvar configurações');
     }
   };
@@ -90,8 +127,13 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
   const handleTestConnection = async () => {
     setTesting(true);
     setTestResult(null);
+    setDebugInfo('');
 
-    const url = `http://${ip}:${port}/health`;
+    const normalized = normalizeHostAndPort(ip, port);
+    if (normalized.ip !== ip) setIp(normalized.ip);
+    if (normalized.port !== port) setPort(normalized.port);
+
+    const url = `http://${normalized.ip}:${normalized.port}/health`;
     console.log('[TotemSettings] Testando conexão:', url);
 
     try {
@@ -121,11 +163,33 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
         setTestResult('error');
         const text = await response.text();
         console.error('[TotemSettings] Error response:', text);
+        setDebugInfo(
+          JSON.stringify(
+            {
+              url,
+              status: response.status,
+              response: text?.slice?.(0, 800) ?? String(text),
+            },
+            null,
+            2
+          )
+        );
         toast.error(`Servidor respondeu com erro: ${response.status}`);
       }
     } catch (error) {
       console.error('[TotemSettings] Connection error:', error);
       setTestResult('error');
+      setDebugInfo(
+        JSON.stringify(
+          {
+            url,
+            error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+          },
+          null,
+          2
+        )
+      );
+
       if (error instanceof Error && error.name === 'AbortError') {
         toast.error('Timeout: servidor não respondeu em 5s');
       } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -140,12 +204,19 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
 
   const handleTestPrint = async () => {
     setTesting(true);
+    setDebugInfo('');
+
+    const normalized = normalizeHostAndPort(ip, port);
+    if (normalized.ip !== ip) setIp(normalized.ip);
+    if (normalized.port !== port) setPort(normalized.port);
+
+    const url = `http://${normalized.ip}:${normalized.port}/test`;
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(`http://${ip}:${port}/test`, {
+      const response = await fetch(url, {
         signal: controller.signal,
       });
 
@@ -154,10 +225,32 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
       if (response.ok) {
         toast.success('Teste de impressão enviado!');
       } else {
-        toast.error('Erro ao enviar teste de impressão');
+        const text = await response.text();
+        setDebugInfo(
+          JSON.stringify(
+            {
+              url,
+              status: response.status,
+              response: text?.slice?.(0, 800) ?? String(text),
+            },
+            null,
+            2
+          )
+        );
+        toast.error(`Erro ao enviar teste de impressão (HTTP ${response.status})`);
       }
     } catch (error) {
-      toast.error('Falha na comunicação com impressora');
+      setDebugInfo(
+        JSON.stringify(
+          {
+            url,
+            error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+          },
+          null,
+          2
+        )
+      );
+      toast.error('Falha na comunicação com o servidor de impressão');
     } finally {
       setTesting(false);
     }
@@ -186,9 +279,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
                 autoFocus
                 className={passwordError ? 'border-destructive' : ''}
               />
-              {passwordError && (
-                <p className="text-sm text-destructive">Senha incorreta</p>
-              )}
+              {passwordError && <p className="text-sm text-destructive">Senha incorreta</p>}
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
@@ -207,9 +298,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
                   <Printer className="w-4 h-4" />
                   Servidor de Impressão
                 </CardTitle>
-                <CardDescription>
-                  Configure o IP do computador com o servidor de impressão
-                </CardDescription>
+                <CardDescription>Configure o IP do computador com o servidor de impressão</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
@@ -228,7 +317,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
                       id="server-port"
                       value={port}
                       onChange={(e) => setPort(e.target.value)}
-                      placeholder="3001"
+                      placeholder="3000"
                     />
                   </div>
                 </div>
@@ -268,6 +357,13 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
                     Imprimir Teste
                   </Button>
                 </div>
+
+                {debugInfo && (
+                  <div className="rounded border p-2">
+                    <p className="text-xs text-muted-foreground mb-1">Diagnóstico (copie e me envie):</p>
+                    <pre className="text-[11px] leading-snug whitespace-pre-wrap break-words font-mono">{debugInfo}</pre>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -282,9 +378,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
               </Button>
             </div>
 
-            <p className="text-xs text-muted-foreground text-center">
-              Senha padrão: 1234 • Altere no código para maior segurança
-            </p>
+            <p className="text-xs text-muted-foreground text-center">Senha padrão: 1234 • Altere no código para maior segurança</p>
           </div>
         )}
       </DialogContent>
