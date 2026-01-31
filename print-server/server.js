@@ -57,7 +57,7 @@ function generateTicketCommands(data) {
   // Comandos ESC/POS
   const ESC = '\x1B';
   const GS = '\x1D';
-  
+
   // Inicialização
   const INIT = ESC + '@';
   // Centralizar
@@ -77,10 +77,10 @@ function generateTicketCommands(data) {
   const FEED = ESC + 'd' + '\x03';
 
   let commands = '';
-  
+
   // Inicializar impressora
   commands += INIT;
-  
+
   // Cabeçalho
   commands += CENTER;
   commands += BOLD_ON;
@@ -90,32 +90,32 @@ function generateTicketCommands(data) {
   commands += SIZE_NORMAL;
   commands += '--------------------------------\n';
   commands += '\n';
-  
+
   // Senha
   commands += 'SENHA\n';
   commands += SIZE_LARGE;
   commands += id_senha + '\n';
   commands += SIZE_NORMAL;
   commands += '\n';
-  
+
   // Tipo
   commands += 'TIPO:\n';
   commands += SIZE_DOUBLE;
   commands += tipo.toUpperCase() + '\n';
   commands += SIZE_NORMAL;
   commands += '\n';
-  
+
   // Data e Hora
   commands += 'DATA: ' + dataStr + '\n';
   commands += 'HORA: ' + hora + '\n';
   commands += '\n';
-  
+
   // Rodapé
   commands += '--------------------------------\n';
   commands += BOLD_OFF;
   commands += 'Aguarde ser chamado no painel\n';
   commands += '--------------------------------\n';
-  
+
   // Alimentar e cortar
   commands += FEED;
   commands += CUT;
@@ -128,7 +128,7 @@ function generateTicketCommands(data) {
  */
 function printTicket(data, callback) {
   const commands = generateTicketCommands(data);
-  
+
   sendToPrinter(Buffer.from(commands, 'latin1'), (err) => {
     if (err) {
       callback(err);
@@ -173,7 +173,7 @@ function testPrinterConnection(callback) {
 app.get('/health', (req, res) => {
   testPrinterConnection((err) => {
     const printerStatus = err ? 'offline' : 'online';
-    
+
     res.json({
       status: err ? 'warning' : 'ok',
       timestamp: new Date().toISOString(),
@@ -256,6 +256,16 @@ app.post('/print', (req, res) => {
       });
     }
   });
+});
+
+// Rota para o botão "Testar Conexão" do Lovable não dar 404
+app.all('/', (req, res) => {
+  res.json({ success: true, message: "Servidor Biocenter alcançado!" });
+});
+
+// Caso o Lovable use o endpoint /print para testar
+app.get('/print', (req, res) => {
+  res.json({ message: "Endpoint de impressão ativo. Use POST para imprimir." });
 });
 
 // Iniciar servidor
