@@ -2,6 +2,14 @@ import type { PrintPayload } from '@/types/queue';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+function stripDiacritics(input: string): string {
+  // Impressoras térmicas/ESC-POS frequentemente não lidam bem com UTF-8/acentos.
+  // Remover diacríticos evita caracteres “quebrados” (ex.: Guaíra -> Guaira).
+  return input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 // Obtém URL do servidor de impressão do localStorage ou usa padrão
 function getPrintServerUrl(): string {
   try {
@@ -32,12 +40,20 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
   const baseUrl = getPrintServerUrl();
   const printUrl = `${baseUrl}/print`;
 
+  // Sempre prioriza o número humano (ex.: A006). Em alguns fluxos antigos,
+  // o backend pode esperar a chave `senha`, então enviamos ambas.
+  const ticketNumber = (payload as any)?.id_senha ?? '';
+
   const printData = {
-    id_senha: payload.id_senha,
+    id_senha: ticketNumber,
+    // Retrocompatibilidade: alguns print-servers antigos usam `senha`
+    // para imprimir o número. Garantimos que seja o mesmo número humano.
+    senha: ticketNumber,
     tipo: getTipoDisplay(payload.tipo),
-    unidade: payload.unidade,
+    unidade: stripDiacritics(payload.unidade),
     hora: format(now, 'HH:mm'),
     data: format(now, 'dd/MM/yyyy', { locale: ptBR }),
+    client: 'totem-web',
   };
 
   console.log('[PrintService] URL do servidor:', printUrl);
