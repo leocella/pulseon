@@ -1,25 +1,18 @@
 require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
-const escpos = require('escpos');
-escpos.USB = require('escpos-usb');
+
+const escpos = require('@node-escpos/core');
+const USB = require('@node-escpos/usb-adapter');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const USB_VID = parseInt(process.env.USB_VID, 16) || 0x0416;
-const USB_PID = parseInt(process.env.USB_PID, 16) || 0x5011;
-
 app.use(cors());
 app.use(express.json());
 
-/**
- * Conecta à impressora USB e retorna device + printer
- */
-function getUSBPrinter() {
-  const device = new escpos.USB(USB_VID, USB_PID);
-  const printer = new escpos.Printer(device, { encoding: 'CP860' });
-  return { device, printer };
-}
+const PORT = Number(process.env.PORT || 3001);
+const VID = parseInt(process.env.USB_VID, 16);
+const PID = parseInt(process.env.USB_PID, 16);
 
 /**
  * Imprime um ticket com os dados fornecidos
@@ -27,50 +20,39 @@ function getUSBPrinter() {
 function printTicket(data, callback) {
   const { id_senha, tipo, data: dataStr, hora } = data;
 
-  let device, printer;
-
   try {
-    const usb = getUSBPrinter();
-    device = usb.device;
-    printer = usb.printer;
-  } catch (err) {
-    return callback(new Error(`Impressora USB não encontrada (VID:${USB_VID.toString(16)} PID:${USB_PID.toString(16)}): ${err.message}`));
-  }
+    const device = new USB(VID, PID);
+    const printer = new escpos.Printer(device, { encoding: 'GB18030' });
 
-  device.open((err) => {
-    if (err) {
-      return callback(new Error(`Erro ao abrir dispositivo USB: ${err.message}`));
-    }
-
-    try {
+    device.open(() => {
       printer
-        .font('A')
-        .align('CT')
-        .style('B')
+        .hw('init')
+        .align('ct')
+        .style('b')
         .text('--------------------------------')
         .size(1, 1)
         .text('BIOCENTER')
         .size(0, 0)
         .text('--------------------------------')
-        .text('')
+        .feed(1)
         .text('SENHA')
         .size(2, 2)
         .text(id_senha)
         .size(0, 0)
-        .text('')
+        .feed(1)
         .text('TIPO:')
         .size(1, 1)
         .text(tipo.toUpperCase())
         .size(0, 0)
-        .text('')
+        .feed(1)
         .text('DATA:')
         .text(dataStr)
-        .text('')
+        .feed(1)
         .text('HORA:')
         .text(hora)
-        .text('')
+        .feed(1)
         .text('--------------------------------')
-        .style('NORMAL')
+        .style('normal')
         .text('Aguarde ser chamado no painel')
         .text('--------------------------------')
         .feed(3)
@@ -78,39 +60,20 @@ function printTicket(data, callback) {
         .close(() => {
           callback(null);
         });
-    } catch (printErr) {
-      callback(new Error(`Erro durante impressão: ${printErr.message}`));
-    }
-  });
+    });
+  } catch (err) {
+    callback(new Error(`Erro na impressão: ${err.message}`));
+  }
 }
 
 // GET /health - Status do servidor
 app.get('/health', (req, res) => {
-  let printerStatus = 'unknown';
-  let printerError = null;
-
-  try {
-    const devices = escpos.USB.findPrinter();
-    const found = devices.some(d =>
-      d.deviceDescriptor.idVendor === USB_VID &&
-      d.deviceDescriptor.idProduct === USB_PID
-    );
-    printerStatus = found ? 'connected' : 'not_found';
-  } catch (err) {
-    printerStatus = 'error';
-    printerError = err.message;
-  }
-
   res.json({
-    status: printerStatus === 'connected' ? 'ok' : 'warning',
+    status: 'ok',
     timestamp: new Date().toISOString(),
     usb: {
-      vid: `0x${USB_VID.toString(16).padStart(4, '0')}`,
-      pid: `0x${USB_PID.toString(16).padStart(4, '0')}`
-    },
-    printer: {
-      status: printerStatus,
-      error: printerError
+      vid: `0x${VID.toString(16).padStart(4, '0')}`,
+      pid: `0x${PID.toString(16).padStart(4, '0')}`
     }
   });
 });
@@ -133,14 +96,14 @@ app.get('/test', (req, res) => {
       res.status(500).json({
         success: false,
         error: err.message,
-        usb: { vid: `0x${USB_VID.toString(16)}`, pid: `0x${USB_PID.toString(16)}` }
+        usb: { vid: `0x${VID.toString(16)}`, pid: `0x${PID.toString(16)}` }
       });
     } else {
       console.log('Teste de impressão concluído!');
       res.json({
         success: true,
         message: 'Ticket de teste impresso',
-        usb: { vid: `0x${USB_VID.toString(16)}`, pid: `0x${USB_PID.toString(16)}` }
+        usb: { vid: `0x${VID.toString(16)}`, pid: `0x${PID.toString(16)}` }
       });
     }
   });
@@ -187,24 +150,13 @@ app.post('/print', (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  let printerFound = false;
-
-  try {
-    const devices = escpos.USB.findPrinter();
-    printerFound = devices.some(d =>
-      d.deviceDescriptor.idVendor === USB_VID &&
-      d.deviceDescriptor.idProduct === USB_PID
-    );
-  } catch (e) { }
-
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║     BIOCENTER - Servidor de Impressão USB Direto      ║
 ╠═══════════════════════════════════════════════════════╣
 ║  Servidor: http://localhost:${PORT}                       ║
-║  USB VID:  0x${USB_VID.toString(16).padStart(4, '0')}                                      ║
-║  USB PID:  0x${USB_PID.toString(16).padStart(4, '0')}                                      ║
-║  Status:   ${(printerFound ? '✓ Impressora conectada' : '✗ Impressora não encontrada').padEnd(39)} ║
+║  USB VID:  0x${VID.toString(16).padStart(4, '0')}                                      ║
+║  USB PID:  0x${PID.toString(16).padStart(4, '0')}                                      ║
 ║                                                       ║
 ║  Endpoints:                                           ║
 ║    GET  /health  - Status do servidor                 ║
@@ -212,13 +164,4 @@ app.listen(PORT, () => {
 ║    POST /print   - Imprime senha                      ║
 ╚═══════════════════════════════════════════════════════╝
   `);
-
-  if (!printerFound) {
-    console.log('⚠ AVISO: Impressora USB não detectada!');
-    console.log('  Verifique:');
-    console.log('  - Cabo USB conectado');
-    console.log('  - Impressora ligada');
-    console.log(`  - VID/PID corretos no .env (atual: 0x${USB_VID.toString(16)}/0x${USB_PID.toString(16)})`);
-    console.log('');
-  }
 });
