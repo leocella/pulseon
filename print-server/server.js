@@ -253,24 +253,45 @@ app.get('/test', (req, res) => {
 
 // POST /print - Imprime senha
 app.post('/print', (req, res) => {
-  console.log('Recebido pedido de impressão:', req.body);
+  console.log('=== Recebido pedido de impressão ===');
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('Body type:', typeof req.body);
 
-  const { id_senha, tipo, hora } = req.body;
-
-  if (!id_senha || !tipo) {
+  // Verifica se o body foi parseado corretamente
+  if (!req.body || Object.keys(req.body).length === 0) {
+    console.error('ERRO: Body vazio ou não parseado!');
     return res.status(400).json({
       success: false,
-      error: 'Dados incompletos. Necessário: id_senha, tipo'
+      error: 'Body vazio. Verifique Content-Type: application/json'
+    });
+  }
+
+  // Aceita tanto id_senha quanto senha (retrocompatibilidade)
+  const id_senha = req.body.id_senha || req.body.senha;
+  const tipo = req.body.tipo;
+  const hora = req.body.hora;
+
+  console.log('Dados extraídos:', { id_senha, tipo, hora });
+
+  if (!id_senha || !tipo) {
+    console.error('ERRO: Dados incompletos!', { id_senha, tipo });
+    return res.status(400).json({
+      success: false,
+      error: 'Dados incompletos. Necessário: id_senha (ou senha), tipo',
+      received: { id_senha: req.body.id_senha, senha: req.body.senha, tipo: req.body.tipo }
     });
   }
 
   const now = new Date();
   const ticketData = {
-    id_senha,
-    tipo,
+    id_senha: String(id_senha), // Garante que é string
+    tipo: String(tipo),
     data: now.toLocaleDateString('pt-BR'),
     hora: hora || now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   };
+
+  console.log('Dados do ticket:', ticketData);
 
   printTicket(ticketData, (err) => {
     if (err) {
@@ -292,8 +313,8 @@ app.post('/print', (req, res) => {
 
 // Rota raiz - para testes diretos no browser e botão "Testar Conexão"
 app.get('/', (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: "Servidor Biocenter Print-Server ativo!",
     endpoints: {
       health: "GET /health - Status do servidor e impressora",
