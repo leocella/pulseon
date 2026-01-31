@@ -2,27 +2,14 @@ import type { PrintPayload } from '@/types/queue';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+import { getPrintServerBaseUrl } from '@/lib/printServerConfig';
+
 function stripDiacritics(input: string): string {
   // Impressoras térmicas/ESC-POS frequentemente não lidam bem com UTF-8/acentos.
   // Remover diacríticos evita caracteres “quebrados” (ex.: Guaíra -> Guaira).
   return input
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-}
-
-// Obtém URL do servidor de impressão do localStorage ou usa padrão
-function getPrintServerUrl(): string {
-  try {
-    const saved = localStorage.getItem('totem_print_server_ip');
-    if (saved) {
-      const { ip, port } = JSON.parse(saved);
-      return `http://${ip}:${port}`;
-    }
-  } catch (e) {
-    console.error('[PrintService] Erro ao ler configuração:', e);
-  }
-  // Fallback para variável de ambiente ou localhost
-  return import.meta.env.VITE_PRINT_SERVICE_URL?.replace('/print', '') || 'http://localhost:3000';
 }
 
 // Mapeia tipo para prefixo legível
@@ -37,7 +24,7 @@ function getTipoDisplay(tipo: string): string {
 
 export async function printTicket(payload: PrintPayload, retries = 2): Promise<boolean> {
   const now = new Date();
-  const baseUrl = getPrintServerUrl();
+  const baseUrl = getPrintServerBaseUrl();
   const printUrl = `${baseUrl}/print`;
 
   // Garante que o número da senha nunca seja undefined/null
@@ -115,7 +102,7 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
 // Verificar se o servidor de impressão está online
 export async function checkPrintServer(): Promise<boolean> {
   try {
-    const baseUrl = getPrintServerUrl();
+    const baseUrl = getPrintServerBaseUrl();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
 
