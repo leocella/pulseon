@@ -14,7 +14,7 @@ function getPrintServerUrl(): string {
     console.error('[PrintService] Erro ao ler configuração:', e);
   }
   // Fallback para variável de ambiente ou localhost
-  return import.meta.env.VITE_PRINT_SERVICE_URL?.replace('/print', '') || 'http://localhost:3001';
+  return import.meta.env.VITE_PRINT_SERVICE_URL?.replace('/print', '') || 'http://localhost:3000';
 }
 
 // Mapeia tipo para prefixo legível
@@ -31,7 +31,7 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
   const now = new Date();
   const baseUrl = getPrintServerUrl();
   const printUrl = `${baseUrl}/print`;
-  
+
   const printData = {
     id_senha: payload.id_senha,
     tipo: getTipoDisplay(payload.tipo),
@@ -47,7 +47,7 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-      
+
       const response = await fetch(printUrl, {
         method: 'POST',
         headers: {
@@ -56,7 +56,7 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
         body: JSON.stringify(printData),
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (response.ok) {
@@ -72,11 +72,11 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
       } else {
         console.error(`[PrintService] Tentativa ${attempt + 1} erro:`, error);
       }
-      
+
       if (attempt === retries) {
         return false;
       }
-      
+
       // Aguardar antes de tentar novamente
       await new Promise(resolve => setTimeout(resolve, 500));
     }
@@ -91,11 +91,11 @@ export async function checkPrintServer(): Promise<boolean> {
     const baseUrl = getPrintServerUrl();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
-    
+
     const response = await fetch(`${baseUrl}/health`, {
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
     return response.ok;
   } catch {

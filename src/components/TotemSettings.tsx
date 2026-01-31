@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 const SETTINGS_PASSWORD = '1234'; // Senha padrão para acessar configurações
 const STORAGE_KEY = 'totem_print_server_ip';
 const DEFAULT_IP = 'localhost';
-const DEFAULT_PORT = '3001';
+const DEFAULT_PORT = '3000';
 
 export function getPrintServerUrl(): string {
   try {
@@ -34,7 +34,7 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
-  
+
   const [ip, setIp] = useState(DEFAULT_IP);
   const [port, setPort] = useState(DEFAULT_PORT);
   const [testing, setTesting] = useState(false);
@@ -90,28 +90,28 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
   const handleTestConnection = async () => {
     setTesting(true);
     setTestResult(null);
-    
+
     const url = `http://${ip}:${port}/health`;
     console.log('[TotemSettings] Testando conexão:', url);
-    
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(url, {
         signal: controller.signal,
         mode: 'cors',
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       console.log('[TotemSettings] Response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('[TotemSettings] Response data:', data);
         setTestResult('success');
-        
+
         if (data.printer?.status === 'offline') {
           toast.success('Servidor OK! (Impressora offline - verifique conexão da impressora)');
         } else {
@@ -140,17 +140,17 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
 
   const handleTestPrint = async () => {
     setTesting(true);
-    
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(`http://${ip}:${port}/test`, {
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (response.ok) {
         toast.success('Teste de impressão enviado!');
       } else {
