@@ -261,9 +261,17 @@ app.post('/print', (req, res) => {
   });
 });
 
-// Rota para o botão "Testar Conexão" do Lovable não dar 404
-app.all('/', (req, res) => {
-  res.json({ success: true, message: "Servidor Biocenter alcançado!" });
+// Rota raiz - para testes diretos no browser e botão "Testar Conexão"
+app.get('/', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "Servidor Biocenter Print-Server ativo!",
+    endpoints: {
+      health: "GET /health - Status do servidor e impressora",
+      test: "GET /test - Imprime ticket de teste",
+      print: "POST /print - Imprime senha (body: { id_senha, tipo, hora? })"
+    }
+  });
 });
 
 // Caso o Lovable use o endpoint /print para testar
