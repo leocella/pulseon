@@ -18,6 +18,9 @@ const PRINTER_PORT = parseInt(process.env.PRINTER_PORT, 10) || 9100;
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
+  // LOG para debug
+  console.log(`[CORS] ${req.method} ${req.path} - Origin: ${origin || 'none'}`);
+
   // Permite qualquer origem (ecoando a origin quando presente para compatibilidade)
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -26,17 +29,19 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, Access-Control-Request-Private-Network'
+    'Content-Type, Authorization, Accept, X-Requested-With, Access-Control-Request-Private-Network'
   );
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   // Necessário para o Chrome permitir requests para rede privada (PNA)
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
   if (req.method === 'OPTIONS') {
-    // Preflight
+    // Preflight - responde imediatamente
+    console.log('[CORS] Preflight OK');
     return res.sendStatus(204);
   }
 
@@ -316,8 +321,9 @@ app.get('/print', (req, res) => {
   res.json({ message: "Endpoint de impressão ativo. Use POST para imprimir." });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
+// Iniciar servidor em TODAS as interfaces (0.0.0.0)
+// Isso permite conexões de outros dispositivos na rede
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║     BIOCENTER - Servidor de Impressão via Rede        ║
