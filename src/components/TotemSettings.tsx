@@ -7,54 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
+import {
+  DEFAULT_PRINT_SERVER_IP,
+  DEFAULT_PRINT_SERVER_PORT,
+  PRINT_SERVER_STORAGE_KEY,
+  normalizeHostAndPort,
+  savePrintServerConfig,
+} from '@/lib/printServerConfig';
+
 const SETTINGS_PASSWORD = '1234'; // Senha padrão para acessar configurações
-const STORAGE_KEY = 'totem_print_server_ip';
-const DEFAULT_IP = 'localhost';
-const DEFAULT_PORT = '3000';
-
-function normalizeHostAndPort(rawIp: string, rawPort: string): { ip: string; port: string } {
-  let ip = (rawIp || '').trim();
-  let port = (rawPort || '').trim();
-
-  // Remove protocolo e qualquer caminho
-  ip = ip.replace(/^https?:\/\//i, '');
-  ip = ip.split('/')[0];
-  ip = ip.replace(/\s+/g, '');
-
-  // Se o usuário digitar "IP:PORTA" no campo IP, extrai automaticamente a porta
-  // (IPv6 não é suportado aqui — não é o caso típico deste cenário.)
-  const lastColon = ip.lastIndexOf(':');
-  if (lastColon > -1) {
-    const maybePort = ip.slice(lastColon + 1);
-    const host = ip.slice(0, lastColon);
-    if (/^\d+$/.test(maybePort)) {
-      ip = host;
-      port = maybePort;
-    }
-  }
-
-  // Limita a porta a dígitos (evita "3000/" etc.)
-  port = port.replace(/\D+/g, '');
-
-  return {
-    ip: ip || DEFAULT_IP,
-    port: port || DEFAULT_PORT,
-  };
-}
-
-export function getPrintServerUrl(): string {
-  try {
-    const savedIp = localStorage.getItem(STORAGE_KEY);
-    if (savedIp) {
-      const parsed = JSON.parse(savedIp);
-      const normalized = normalizeHostAndPort(parsed?.ip, parsed?.port);
-      return `http://${normalized.ip}:${normalized.port}`;
-    }
-  } catch (e) {
-    console.error('Erro ao ler IP do localStorage:', e);
-  }
-  return `http://${DEFAULT_IP}:${DEFAULT_PORT}`;
-}
 
 interface TotemSettingsProps {
   open: boolean;
@@ -66,8 +27,8 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
 
-  const [ip, setIp] = useState(DEFAULT_IP);
-  const [port, setPort] = useState(DEFAULT_PORT);
+  const [ip, setIp] = useState(DEFAULT_PRINT_SERVER_IP);
+  const [port, setPort] = useState(DEFAULT_PRINT_SERVER_PORT);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -76,10 +37,13 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
   useEffect(() => {
     if (open) {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = localStorage.getItem(PRINT_SERVER_STORAGE_KEY);
         if (saved) {
           const { ip: savedIp, port: savedPort } = JSON.parse(saved);
-          const normalized = normalizeHostAndPort(savedIp || DEFAULT_IP, savedPort || DEFAULT_PORT);
+          const normalized = normalizeHostAndPort(
+            savedIp || DEFAULT_PRINT_SERVER_IP,
+            savedPort || DEFAULT_PRINT_SERVER_PORT
+          );
           setIp(normalized.ip);
           setPort(normalized.port);
         }
@@ -113,10 +77,9 @@ export function TotemSettings({ open, onClose }: TotemSettingsProps) {
 
   const handleSave = () => {
     try {
-      const normalized = normalizeHostAndPort(ip, port);
+      const normalized = savePrintServerConfig(ip, port);
       setIp(normalized.ip);
       setPort(normalized.port);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ip: normalized.ip, port: normalized.port }));
       toast.success('Configurações salvas com sucesso!');
       onClose();
     } catch {
