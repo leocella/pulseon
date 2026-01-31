@@ -1,123 +1,196 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const escpos = require('escpos');
-escpos.USB = require('escpos-usb');
+const net = require('net');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const USB_VID = parseInt(process.env.USB_VID, 16) || 0x0416;
-const USB_PID = parseInt(process.env.USB_PID, 16) || 0x5011;
+
+// Configuração da impressora de rede
+const PRINTER_IP = process.env.PRINTER_IP || '192.168.1.100';
+const PRINTER_PORT = parseInt(process.env.PRINTER_PORT, 10) || 9100;
 
 app.use(cors());
 app.use(express.json());
 
 /**
- * Conecta à impressora USB e retorna device + printer
+ * Envia comandos ESC/POS para impressora via TCP/IP
  */
-function getUSBPrinter() {
-  const device = new escpos.USB(USB_VID, USB_PID);
-  const printer = new escpos.Printer(device, { encoding: 'CP860' });
-  return { device, printer };
+function sendToPrinter(data, callback) {
+  const client = new net.Socket();
+  let connected = false;
+
+  client.setTimeout(5000);
+
+  client.on('timeout', () => {
+    client.destroy();
+    if (!connected) {
+      callback(new Error('Timeout ao conectar na impressora'));
+    }
+  });
+
+  client.on('error', (err) => {
+    callback(new Error(`Erro de conexão: ${err.message}`));
+  });
+
+  client.connect(PRINTER_PORT, PRINTER_IP, () => {
+    connected = true;
+    client.write(data, () => {
+      client.end();
+      callback(null);
+    });
+  });
+
+  client.on('close', () => {
+    if (connected) {
+      // Conexão fechada normalmente após envio
+    }
+  });
+}
+
+/**
+ * Gera comandos ESC/POS para o ticket
+ */
+function generateTicketCommands(data) {
+  const { id_senha, tipo, data: dataStr, hora } = data;
+
+  // Comandos ESC/POS
+  const ESC = '\x1B';
+  const GS = '\x1D';
+  
+  // Inicialização
+  const INIT = ESC + '@';
+  // Centralizar
+  const CENTER = ESC + 'a' + '\x01';
+  // Esquerda
+  const LEFT = ESC + 'a' + '\x00';
+  // Negrito ON/OFF
+  const BOLD_ON = ESC + 'E' + '\x01';
+  const BOLD_OFF = ESC + 'E' + '\x00';
+  // Tamanho duplo (largura e altura)
+  const SIZE_NORMAL = GS + '!' + '\x00';
+  const SIZE_DOUBLE = GS + '!' + '\x11';
+  const SIZE_LARGE = GS + '!' + '\x22';
+  // Corte de papel
+  const CUT = GS + 'V' + '\x00';
+  // Alimentar linhas
+  const FEED = ESC + 'd' + '\x03';
+
+  let commands = '';
+  
+  // Inicializar impressora
+  commands += INIT;
+  
+  // Cabeçalho
+  commands += CENTER;
+  commands += BOLD_ON;
+  commands += '--------------------------------\n';
+  commands += SIZE_DOUBLE;
+  commands += 'BIOCENTER\n';
+  commands += SIZE_NORMAL;
+  commands += '--------------------------------\n';
+  commands += '\n';
+  
+  // Senha
+  commands += 'SENHA\n';
+  commands += SIZE_LARGE;
+  commands += id_senha + '\n';
+  commands += SIZE_NORMAL;
+  commands += '\n';
+  
+  // Tipo
+  commands += 'TIPO:\n';
+  commands += SIZE_DOUBLE;
+  commands += tipo.toUpperCase() + '\n';
+  commands += SIZE_NORMAL;
+  commands += '\n';
+  
+  // Data e Hora
+  commands += 'DATA: ' + dataStr + '\n';
+  commands += 'HORA: ' + hora + '\n';
+  commands += '\n';
+  
+  // Rodapé
+  commands += '--------------------------------\n';
+  commands += BOLD_OFF;
+  commands += 'Aguarde ser chamado no painel\n';
+  commands += '--------------------------------\n';
+  
+  // Alimentar e cortar
+  commands += FEED;
+  commands += CUT;
+
+  return commands;
 }
 
 /**
  * Imprime um ticket com os dados fornecidos
  */
 function printTicket(data, callback) {
-  const { id_senha, tipo, data: dataStr, hora } = data;
-
-  let device, printer;
-
-  try {
-    const usb = getUSBPrinter();
-    device = usb.device;
-    printer = usb.printer;
-  } catch (err) {
-    return callback(new Error(`Impressora USB não encontrada (VID:${USB_VID.toString(16)} PID:${USB_PID.toString(16)}): ${err.message}`));
-  }
-
-  device.open((err) => {
+  const commands = generateTicketCommands(data);
+  
+  sendToPrinter(Buffer.from(commands, 'latin1'), (err) => {
     if (err) {
-      return callback(new Error(`Erro ao abrir dispositivo USB: ${err.message}`));
+      callback(err);
+    } else {
+      callback(null);
     }
+  });
+}
 
-    try {
-      printer
-        .font('A')
-        .align('CT')
-        .style('B')
-        .text('--------------------------------')
-        .size(1, 1)
-        .text('BIOCENTER')
-        .size(0, 0)
-        .text('--------------------------------')
-        .text('')
-        .text('SENHA')
-        .size(2, 2)
-        .text(id_senha)
-        .size(0, 0)
-        .text('')
-        .text('TIPO:')
-        .size(1, 1)
-        .text(tipo.toUpperCase())
-        .size(0, 0)
-        .text('')
-        .text('DATA:')
-        .text(dataStr)
-        .text('')
-        .text('HORA:')
-        .text(hora)
-        .text('')
-        .text('--------------------------------')
-        .style('NORMAL')
-        .text('Aguarde ser chamado no painel')
-        .text('--------------------------------')
-        .feed(3)
-        .cut()
-        .close(() => {
-          callback(null);
-        });
-    } catch (printErr) {
-      callback(new Error(`Erro durante impressão: ${printErr.message}`));
+/**
+ * Testa conexão com a impressora
+ */
+function testPrinterConnection(callback) {
+  const client = new net.Socket();
+  let connected = false;
+
+  client.setTimeout(3000);
+
+  client.on('timeout', () => {
+    client.destroy();
+    callback(new Error('Timeout'));
+  });
+
+  client.on('error', (err) => {
+    callback(new Error(err.message));
+  });
+
+  client.connect(PRINTER_PORT, PRINTER_IP, () => {
+    connected = true;
+    client.end();
+    callback(null);
+  });
+
+  client.on('close', () => {
+    if (connected) {
+      // OK
     }
   });
 }
 
 // GET /health - Status do servidor
 app.get('/health', (req, res) => {
-  let printerStatus = 'unknown';
-  let printerError = null;
-
-  try {
-    const devices = escpos.USB.findPrinter();
-    const found = devices.some(d =>
-      d.deviceDescriptor.idVendor === USB_VID &&
-      d.deviceDescriptor.idProduct === USB_PID
-    );
-    printerStatus = found ? 'connected' : 'not_found';
-  } catch (err) {
-    printerStatus = 'error';
-    printerError = err.message;
-  }
-
-  res.json({
-    status: printerStatus === 'connected' ? 'ok' : 'warning',
-    timestamp: new Date().toISOString(),
-    usb: {
-      vid: `0x${USB_VID.toString(16).padStart(4, '0')}`,
-      pid: `0x${USB_PID.toString(16).padStart(4, '0')}`
-    },
-    printer: {
-      status: printerStatus,
-      error: printerError
-    }
+  testPrinterConnection((err) => {
+    const printerStatus = err ? 'offline' : 'online';
+    
+    res.json({
+      status: err ? 'warning' : 'ok',
+      timestamp: new Date().toISOString(),
+      printer: {
+        type: 'network',
+        ip: PRINTER_IP,
+        port: PRINTER_PORT,
+        status: printerStatus,
+        error: err ? err.message : null
+      }
+    });
   });
 });
 
 // GET /test - Imprime ticket de teste
 app.get('/test', (req, res) => {
-  console.log('Executando teste de impressão USB...');
+  console.log(`Executando teste de impressão via rede (${PRINTER_IP}:${PRINTER_PORT})...`);
 
   const now = new Date();
   const testData = {
@@ -133,14 +206,14 @@ app.get('/test', (req, res) => {
       res.status(500).json({
         success: false,
         error: err.message,
-        usb: { vid: `0x${USB_VID.toString(16)}`, pid: `0x${USB_PID.toString(16)}` }
+        printer: { ip: PRINTER_IP, port: PRINTER_PORT }
       });
     } else {
       console.log('Teste de impressão concluído!');
       res.json({
         success: true,
         message: 'Ticket de teste impresso',
-        usb: { vid: `0x${USB_VID.toString(16)}`, pid: `0x${USB_PID.toString(16)}` }
+        printer: { ip: PRINTER_IP, port: PRINTER_PORT }
       });
     }
   });
@@ -187,38 +260,33 @@ app.post('/print', (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  let printerFound = false;
-
-  try {
-    const devices = escpos.USB.findPrinter();
-    printerFound = devices.some(d =>
-      d.deviceDescriptor.idVendor === USB_VID &&
-      d.deviceDescriptor.idProduct === USB_PID
-    );
-  } catch (e) { }
-
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
-║     BIOCENTER - Servidor de Impressão USB Direto      ║
+║     BIOCENTER - Servidor de Impressão via Rede        ║
 ╠═══════════════════════════════════════════════════════╣
-║  Servidor: http://localhost:${PORT}                       ║
-║  USB VID:  0x${USB_VID.toString(16).padStart(4, '0')}                                      ║
-║  USB PID:  0x${USB_PID.toString(16).padStart(4, '0')}                                      ║
-║  Status:   ${(printerFound ? '✓ Impressora conectada' : '✗ Impressora não encontrada').padEnd(39)} ║
+║  Servidor HTTP:  http://localhost:${PORT}                 ║
+║  Impressora IP:  ${PRINTER_IP.padEnd(36)}║
+║  Impressora Porta: ${String(PRINTER_PORT).padEnd(34)}║
 ║                                                       ║
 ║  Endpoints:                                           ║
-║    GET  /health  - Status do servidor                 ║
+║    GET  /health  - Status do servidor e impressora    ║
 ║    GET  /test    - Imprime ticket de teste            ║
 ║    POST /print   - Imprime senha                      ║
 ╚═══════════════════════════════════════════════════════╝
   `);
 
-  if (!printerFound) {
-    console.log('⚠ AVISO: Impressora USB não detectada!');
-    console.log('  Verifique:');
-    console.log('  - Cabo USB conectado');
-    console.log('  - Impressora ligada');
-    console.log(`  - VID/PID corretos no .env (atual: 0x${USB_VID.toString(16)}/0x${USB_PID.toString(16)})`);
-    console.log('');
-  }
+  // Testar conexão inicial
+  testPrinterConnection((err) => {
+    if (err) {
+      console.log('⚠ AVISO: Impressora não está respondendo!');
+      console.log(`  IP: ${PRINTER_IP}:${PRINTER_PORT}`);
+      console.log('  Verifique:');
+      console.log('  - Impressora ligada e conectada na rede');
+      console.log('  - IP correto no arquivo .env');
+      console.log('');
+    } else {
+      console.log(`✓ Impressora conectada em ${PRINTER_IP}:${PRINTER_PORT}`);
+      console.log('');
+    }
+  });
 });

@@ -12,8 +12,8 @@ import type { TipoAtendimento } from '@/types/queue';
 
 type TotemState = 'idle' | 'loading' | 'success' | 'error' | 'print_error';
 
-// Sequência secreta: 5 toques no logo em 3 segundos
-const SECRET_TAP_COUNT = 5;
+// Sequência secreta: 4 toques no logo em 3 segundos
+const SECRET_TAP_COUNT = 4;
 const SECRET_TAP_TIMEOUT = 3000;
 
 export default function Totem() {
