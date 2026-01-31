@@ -84,7 +84,7 @@ function sendToPrinter(data, callback) {
  * Gera comandos ESC/POS para o ticket
  */
 function generateTicketCommands(data) {
-  const { id_senha, tipo, data: dataStr, hora } = data;
+  const { id_senha } = data;
 
   // Comandos ESC/POS
   const ESC = '\x1B';
@@ -94,15 +94,13 @@ function generateTicketCommands(data) {
   const INIT = ESC + '@';
   // Centralizar
   const CENTER = ESC + 'a' + '\x01';
-  // Esquerda
-  const LEFT = ESC + 'a' + '\x00';
   // Negrito ON/OFF
   const BOLD_ON = ESC + 'E' + '\x01';
   const BOLD_OFF = ESC + 'E' + '\x00';
   // Tamanho duplo (largura e altura)
   const SIZE_NORMAL = GS + '!' + '\x00';
   const SIZE_DOUBLE = GS + '!' + '\x11';
-  const SIZE_LARGE = GS + '!' + '\x22';
+  const SIZE_LARGE = GS + '!' + '\x33'; // Ainda maior
   // Corte de papel
   const CUT = GS + 'V' + '\x00';
   // Alimentar linhas
@@ -113,9 +111,11 @@ function generateTicketCommands(data) {
   // Inicializar impressora
   commands += INIT;
 
-  // Cabeçalho
+  // Centralizar tudo
   commands += CENTER;
   commands += BOLD_ON;
+
+  // Cabeçalho
   commands += '--------------------------------\n';
   commands += SIZE_DOUBLE;
   commands += 'BIOCENTER\n';
@@ -123,23 +123,10 @@ function generateTicketCommands(data) {
   commands += '--------------------------------\n';
   commands += '\n';
 
-  // Senha
-  commands += 'SENHA\n';
+  // Senha (destaque grande)
   commands += SIZE_LARGE;
-  commands += id_senha + '\n';
+  commands += (id_senha || 'ERRO') + '\n';
   commands += SIZE_NORMAL;
-  commands += '\n';
-
-  // Tipo
-  commands += 'TIPO:\n';
-  commands += SIZE_DOUBLE;
-  commands += tipo.toUpperCase() + '\n';
-  commands += SIZE_NORMAL;
-  commands += '\n';
-
-  // Data e Hora
-  commands += 'DATA: ' + dataStr + '\n';
-  commands += 'HORA: ' + hora + '\n';
   commands += '\n';
 
   // Rodapé
