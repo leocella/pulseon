@@ -116,9 +116,18 @@ export function useGenerateTicket(unidade?: string) {
         .rpc('next_ticket', { p_unidade: unit, p_tipo: tipo as any });
 
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error('Falha ao gerar senha');
+      if (!data) throw new Error('Falha ao gerar senha');
 
-      return data[0] as { id_senha: string; ticket_id: string };
+      // Segurança: dependendo de contexto/biblioteca, o retorno pode ser array (normal)
+      // ou objeto. Garantimos que sempre extraímos um registro válido.
+      const row = Array.isArray(data) ? data[0] : (data as any);
+
+      if (!row?.id_senha || !row?.ticket_id) {
+        console.error('[useGenerateTicket] Resposta inesperada do RPC next_ticket:', data);
+        throw new Error('Resposta inválida ao gerar senha');
+      }
+
+      return row as { id_senha: string; ticket_id: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['waitingTickets'] });

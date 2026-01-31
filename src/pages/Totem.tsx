@@ -71,6 +71,10 @@ export default function Totem() {
     try {
       const result = await generateTicket.mutateAsync(tipo);
 
+      if (!result?.id_senha) {
+        throw new Error('Resposta inválida ao gerar senha');
+      }
+
       setGeneratedTicket({ id_senha: result.id_senha, tipo });
 
       // Try to print
@@ -210,7 +214,7 @@ export default function Totem() {
           {state === 'print_error' && (
             <p className="text-sm text-destructive mt-6 flex items-center justify-center gap-2">
               <AlertCircle className="w-4 h-4" />
-              Falha na impressão. Anote sua senha.
+               Falha na impressão. (No tablet/celular: verifique rede/CORS do servidor). Anote sua senha.
             </p>
           )}
         </Card>

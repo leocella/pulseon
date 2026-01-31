@@ -3,7 +3,6 @@ const path = require('path');
 // mesmo quando o processo é iniciado com o cwd diferente (ex.: iniciando pelo root).
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
-const cors = require('cors');
 const net = require('net');
 
 const app = express();
@@ -13,7 +12,37 @@ const PORT = process.env.PORT || 3001;
 const PRINTER_IP = process.env.PRINTER_IP || '192.168.1.100';
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT, 10) || 9100;
 
-app.use(cors());
+// CORS + Private Network Access (PNA)
+// Importante para permitir que um site HTTPS (ex.: o Totem no tablet/celular)
+// faça fetch para um IP privado HTTP (ex.: http://10.x.x.x:3000).
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // Permite qualquer origem (ecoando a origin quando presente para compatibilidade)
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, Access-Control-Request-Private-Network'
+  );
+
+  // Necessário para o Chrome permitir requests para rede privada (PNA)
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+
+  if (req.method === 'OPTIONS') {
+    // Preflight
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 app.use(express.json());
 
 /**
