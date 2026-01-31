@@ -30,14 +30,14 @@ export default function Totem() {
   // Handler para toques secretos no logo
   const handleLogoTap = useCallback(() => {
     const now = Date.now();
-    
+
     if (now - lastTapTime > SECRET_TAP_TIMEOUT) {
       // Reset se passou muito tempo
       setTapCount(1);
     } else {
       setTapCount(prev => prev + 1);
     }
-    
+
     setLastTapTime(now);
   }, [lastTapTime]);
 
@@ -57,7 +57,7 @@ export default function Totem() {
         setShowSettings(true);
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -79,7 +79,7 @@ export default function Totem() {
 
       // Try to print
       const printed = await printTicket({
-        senha: result.ticket_id,
+        senha: result.id_senha,   // Número da senha (A001, P002, etc)
         id_senha: result.id_senha,
         tipo,
         unidade: UNIDADE,
@@ -113,17 +113,17 @@ export default function Totem() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex flex-col items-center justify-center p-6">
       {/* Settings Modal */}
-      <TotemSettings 
-        open={showSettings} 
-        onClose={() => setShowSettings(false)} 
+      <TotemSettings
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
       />
 
       {/* Header */}
       <div className="text-center mb-12">
         {/* Logo com área clicável secreta */}
-        <img 
-          src="/biocenter-logo.jpg" 
-          alt="Biocenter Logo" 
+        <img
+          src="/biocenter-logo.jpg"
+          alt="Biocenter Logo"
           className="h-24 md:h-32 mx-auto mb-6 object-contain cursor-default select-none"
           onClick={handleLogoTap}
           draggable={false}
@@ -214,7 +214,7 @@ export default function Totem() {
           {state === 'print_error' && (
             <p className="text-sm text-destructive mt-6 flex items-center justify-center gap-2">
               <AlertCircle className="w-4 h-4" />
-               Falha na impressão. (No tablet/celular: verifique rede/CORS do servidor). Anote sua senha.
+              Falha na impressão. (No tablet/celular: verifique rede/CORS do servidor). Anote sua senha.
             </p>
           )}
         </Card>
