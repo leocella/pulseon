@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserCheck, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
+import { UserCheck, AlertCircle, CheckCircle, Loader2, FileText, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useGenerateTicket } from '@/hooks/useQueue';
@@ -26,6 +26,25 @@ export default function Totem() {
   const [showSettings, setShowSettings] = useState(false);
   const [tapCount, setTapCount] = useState(0);
   const [lastTapTime, setLastTapTime] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(console.error);
+    } else {
+      document.exitFullscreen().catch(console.error);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Handler para toques secretos no logo
   const handleLogoTap = useCallback(() => {
@@ -111,7 +130,20 @@ export default function Totem() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex flex-col items-center justify-center p-6 relative">
+      {/* Fullscreen Button */}
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-4 right-4 p-3 rounded-full bg-card/80 backdrop-blur-sm hover:bg-card transition-colors shadow-lg z-50"
+        title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+      >
+        {isFullscreen ? (
+          <Minimize className="w-6 h-6 text-muted-foreground" />
+        ) : (
+          <Maximize className="w-6 h-6 text-muted-foreground" />
+        )}
+      </button>
+
       {/* Settings Modal */}
       <TotemSettings
         open={showSettings}
