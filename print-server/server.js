@@ -1,4 +1,7 @@
-require('dotenv').config();
+const path = require('path');
+// IMPORTANT: garante que o servidor sempre leia o .env da pasta print-server,
+// mesmo quando o processo é iniciado com o cwd diferente (ex.: iniciando pelo root).
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const net = require('net');
