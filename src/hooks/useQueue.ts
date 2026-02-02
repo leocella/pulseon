@@ -207,18 +207,19 @@ export function useUpdateTicketStatus() {
 
 // Fetch history with filters
 export function useHistory(filters: {
-  date?: string;
+  startDate?: string;
+  endDate?: string;
   tipo?: TipoAtendimento;
   atendente?: string;
   page?: number;
   pageSize?: number;
   unidade?: string;
 }) {
-  const { date, tipo, atendente, page = 0, pageSize = 50, unidade } = filters;
+  const { startDate, endDate, tipo, atendente, page = 0, pageSize = 50, unidade } = filters;
   const unit = unidade || UNIDADE;
 
   return useQuery({
-    queryKey: ['history', unit, date, tipo, atendente, page, pageSize],
+    queryKey: ['history', unit, startDate, endDate, tipo, atendente, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from('fila_atendimento')
@@ -227,18 +228,15 @@ export function useHistory(filters: {
         .order('hora_emissao', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (date) {
-        // The date parameter is in YYYY-MM-DD format (local time)
-        // Database stores timestamps in UTC
-        // Brazil timezone is typically UTC-3, so we need to account for that
-        // When it's 00:00 in Brazil, it's 03:00 UTC
-        // When it's 23:59 in Brazil, it's 02:59 UTC next day
-        const startDate = `${date}T00:00:00-03:00`;
-        const endDate = `${date}T23:59:59-03:00`;
+      // Filter by date range (using Brazil timezone UTC-3)
+      if (startDate) {
+        const start = `${startDate}T00:00:00-03:00`;
+        query = query.gte('hora_emissao', start);
+      }
 
-        query = query
-          .gte('hora_emissao', startDate)
-          .lte('hora_emissao', endDate);
+      if (endDate) {
+        const end = `${endDate}T23:59:59-03:00`;
+        query = query.lte('hora_emissao', end);
       }
 
       if (tipo) {

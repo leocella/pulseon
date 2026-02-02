@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   ArrowLeft,
-  Calendar,
+  CalendarIcon,
   Filter,
   Clock,
   Timer,
@@ -11,8 +11,6 @@ import {
   Search,
   BarChart3,
   Users,
-  TrendingUp,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   RefreshCw,
@@ -20,6 +18,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -38,19 +42,24 @@ import {
 import { useHistory } from '@/hooks/useQueue';
 import { UNIDADE } from '@/lib/config';
 import { TicketBadge, StatusBadge } from '@/components/TicketBadge';
-import { format, differenceInMinutes, parseISO } from 'date-fns';
+import { format, differenceInMinutes, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { TipoAtendimento, StatusAtendimento } from '@/types/queue';
 import { useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 
 export default function Historico() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
+  // Date range state - default to last 7 days
+  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 7));
+  const [endDate, setEndDate] = useState<Date>(new Date());
+  
   const [tipo, setTipo] = useState<TipoAtendimento | 'todos'>('todos');
   const [status, setStatus] = useState<StatusAtendimento | 'todos'>('todos');
   const [atendente, setAtendente] = useState('');
@@ -58,7 +67,8 @@ export default function Historico() {
   const [page, setPage] = useState(0);
 
   const { data, isLoading, refetch, isFetching } = useHistory({
-    date,
+    startDate: format(startDate, 'yyyy-MM-dd'),
+    endDate: format(endDate, 'yyyy-MM-dd'),
     tipo: tipo === 'todos' ? undefined : tipo,
     atendente: atendente || undefined,
     page,
@@ -209,7 +219,7 @@ export default function Historico() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `historico-${date}-${UNIDADE}.csv`;
+    a.download = `historico-${format(startDate, 'yyyy-MM-dd')}_${format(endDate, 'yyyy-MM-dd')}-${UNIDADE}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -340,17 +350,66 @@ export default function Historico() {
       {/* Filters */}
       <Card className="p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
+          {/* Date Range Picker */}
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setPage(0);
-              }}
-              className="w-40"
-            />
+            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[140px] justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Data início"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setStartDate(date);
+                      setPage(0);
+                    }
+                  }}
+                  disabled={(date) => date > new Date() || (endDate && date > endDate)}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground">até</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[140px] justify-start text-left font-normal",
+                    !endDate && "text-muted-foreground"
+                  )}
+                >
+                  {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Data fim"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setEndDate(date);
+                      setPage(0);
+                    }
+                  }}
+                  disabled={(date) => date > new Date() || (startDate && date < startDate)}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex items-center gap-2">
@@ -514,9 +573,9 @@ export default function Historico() {
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <AlertTriangle className="w-8 h-8 opacity-50" />
+                      <Search className="w-8 h-8 opacity-50" />
                       <p>Nenhum registro encontrado</p>
-                      <p className="text-sm">Tente ajustar os filtros ou selecionar outra data</p>
+                      <p className="text-sm">Tente ajustar os filtros ou o período de datas</p>
                     </div>
                   </TableCell>
                 </TableRow>
