@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useHistory } from '@/hooks/useQueue';
+import { useHistory, useHistoryAll } from '@/hooks/useQueue';
 import { UNIDADE } from '@/lib/config';
 import { TicketBadge, StatusBadge } from '@/components/TicketBadge';
 import { format, differenceInMinutes, parseISO, subDays } from 'date-fns';
@@ -49,23 +49,30 @@ import { toast } from 'sonner';
 import type { TipoAtendimento, StatusAtendimento } from '@/types/queue';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const PAGE_SIZE = 20;
 
 export default function Historico() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
+
   // Date range state - default to last 7 days
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 7));
   const [endDate, setEndDate] = useState<Date>(new Date());
-  
+
   const [tipo, setTipo] = useState<TipoAtendimento | 'todos'>('todos');
   const [status, setStatus] = useState<StatusAtendimento | 'todos'>('todos');
   const [atendente, setAtendente] = useState('');
   const [searchSenha, setSearchSenha] = useState('');
   const [page, setPage] = useState(0);
 
+  // 1. Dados Paginados (para a tabela)
   const { data, isLoading, refetch, isFetching } = useHistory({
     startDate: format(startDate, 'yyyy-MM-dd'),
     endDate: format(endDate, 'yyyy-MM-dd'),
@@ -76,13 +83,23 @@ export default function Historico() {
     unidade: UNIDADE,
   });
 
-  const allTickets = data?.tickets || [];
+  const paginatedTickets = data?.tickets || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  // Filtrar por status e busca de senha no frontend (pois o hook não suporta)
-  const tickets = useMemo(() => {
-    let filtered = allTickets;
+  // 2. Dados Completos do Período (para estatísticas e CSV)
+  const { data: allHistoryData = [] } = useHistoryAll({
+    startDate: format(startDate, 'yyyy-MM-dd'),
+    endDate: format(endDate, 'yyyy-MM-dd'),
+    tipo: tipo === 'todos' ? undefined : tipo,
+    atendente: atendente || undefined,
+    unidade: UNIDADE,
+  });
+
+  // Filtrar por status e busca de senha no frontend (apenas para a visualização da tabela se necessário,
+  // mas idealmente filters do DB já resolvem a maioria)
+  const ticketsTable = useMemo(() => {
+    let filtered = paginatedTickets;
 
     if (status !== 'todos') {
       filtered = filtered.filter(t => t.status === status);
@@ -96,11 +113,22 @@ export default function Historico() {
     }
 
     return filtered;
-  }, [allTickets, status, searchSenha]);
+  }, [paginatedTickets, status, searchSenha]);
 
-  // Calcular estatísticas do dia
+  // Calcular estatísticas DO PERÍODO TODO (usando allHistoryData)
   const statistics = useMemo(() => {
-    if (allTickets.length === 0) {
+    // Aplicar filtros de status/busca também nos dados completos para as estatísticas refletirem o que o usuário quer ver
+    let filteredAll = allHistoryData;
+
+    if (status !== 'todos') {
+      filteredAll = filteredAll.filter(t => t.status === status);
+    }
+    if (searchSenha.trim()) {
+      const search = searchSenha.toLowerCase().trim();
+      filteredAll = filteredAll.filter(t => t.id_senha.toLowerCase().includes(search));
+    }
+
+    if (filteredAll.length === 0) {
       return {
         totalAtendimentos: 0,
         finalizados: 0,
@@ -111,8 +139,8 @@ export default function Historico() {
       };
     }
 
-    const finalizados = allTickets.filter(t => t.status === 'finalizado');
-    const naoCompareceu = allTickets.filter(t => t.status === 'nao_compareceu');
+    const finalizados = filteredAll.filter(t => t.status === 'finalizado');
+    const naoCompareceu = filteredAll.filter(t => t.status === 'nao_compareceu');
 
     // Calcular médias
     let totalEspera = 0;
@@ -138,20 +166,20 @@ export default function Historico() {
     });
 
     const porTipo = {
-      Normal: allTickets.filter(t => t.tipo === 'Normal').length,
-      Preferencial: allTickets.filter(t => t.tipo === 'Preferencial').length,
-      'Retirada de Laudo': allTickets.filter(t => t.tipo === 'Retirada de Laudo').length,
+      Normal: filteredAll.filter(t => t.tipo === 'Normal').length,
+      Preferencial: filteredAll.filter(t => t.tipo === 'Preferencial').length,
+      'Retirada de Laudo': filteredAll.filter(t => t.tipo === 'Retirada de Laudo').length,
     };
 
     return {
-      totalAtendimentos: allTickets.length,
+      totalAtendimentos: filteredAll.length,
       finalizados: finalizados.length,
       naoCompareceu: naoCompareceu.length,
       mediaEspera: countEspera > 0 ? Math.round(totalEspera / countEspera) : 0,
       mediaAtendimento: countAtendimento > 0 ? Math.round(totalAtendimento / countAtendimento) : 0,
       porTipo,
     };
-  }, [allTickets]);
+  }, [allHistoryData, status, searchSenha]);
 
   const calculateWaitTime = (emissao: string, chamada: string | null) => {
     if (!chamada) return '-';
@@ -167,12 +195,25 @@ export default function Historico() {
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['history'] });
+    queryClient.invalidateQueries({ queryKey: ['historyAll'] });
     refetch();
     toast.success('Dados atualizados!');
   };
 
   const handleExportCSV = () => {
-    if (tickets.length === 0) {
+    // Usar allHistoryData (filtrado) para exportar TUDO
+    let dataToExport = allHistoryData;
+
+    // Aplicar filtros locais
+    if (status !== 'todos') {
+      dataToExport = dataToExport.filter(t => t.status === status);
+    }
+    if (searchSenha.trim()) {
+      const search = searchSenha.toLowerCase().trim();
+      dataToExport = dataToExport.filter(t => t.id_senha.toLowerCase().includes(search));
+    }
+
+    if (dataToExport.length === 0) {
       toast.error('Não há dados para exportar');
       return;
     }
@@ -190,7 +231,7 @@ export default function Historico() {
       'Atendente',
     ];
 
-    const rows = tickets.map(t => {
+    const rows = dataToExport.map(t => {
       const waitTime = t.hora_chamada
         ? differenceInMinutes(parseISO(t.hora_chamada), parseISO(t.hora_emissao))
         : '';
@@ -223,7 +264,7 @@ export default function Historico() {
     a.click();
     URL.revokeObjectURL(url);
 
-    toast.success(`${tickets.length} registros exportados!`);
+    toast.success(`${dataToExport.length} registros exportados!`);
   };
 
   const handleClearFilters = () => {
@@ -263,7 +304,7 @@ export default function Historico() {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            disabled={tickets.length === 0}
+            disabled={allHistoryData.length === 0}
           >
             <Download className="w-4 h-4 mr-2" />
             Exportar CSV
@@ -333,18 +374,31 @@ export default function Historico() {
           </div>
         </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-purple-500" />
-            </div>
-            <div className="flex gap-2 text-sm">
-              <span className="text-normal font-semibold">{statistics.porTipo.Normal}N</span>
-              <span className="text-preferencial font-semibold">{statistics.porTipo.Preferencial}P</span>
-              <span className="text-laudo font-semibold">{statistics.porTipo['Retirada de Laudo']}L</span>
-            </div>
-          </div>
-        </Card>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="p-4 cursor-help">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-500/10 rounded-lg">
+                    <BarChart3 className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <div className="flex gap-2 text-sm">
+                    <span className="text-normal font-semibold">{statistics.porTipo.Normal}N</span>
+                    <span className="text-preferencial font-semibold">{statistics.porTipo.Preferencial}P</span>
+                    <span className="text-laudo font-semibold">{statistics.porTipo['Retirada de Laudo']}L</span>
+                  </div>
+                </div>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-xs space-y-1">
+                <p><strong>N:</strong> Normal</p>
+                <p><strong>P:</strong> Preferencial</p>
+                <p><strong>L:</strong> Retirada de Laudo</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Filters */}
@@ -485,7 +539,7 @@ export default function Historico() {
           )}
 
           <div className="ml-auto text-sm text-muted-foreground">
-            {tickets.length} de {total} registro{total !== 1 ? 's' : ''}
+            {ticketsTable.length} de {total} registro{total !== 1 ? 's' : ''}
           </div>
         </div>
       </Card>
@@ -533,8 +587,8 @@ export default function Historico() {
                     ))}
                   </TableRow>
                 ))
-              ) : tickets.length > 0 ? (
-                tickets.map((ticket) => (
+              ) : ticketsTable.length > 0 ? (
+                ticketsTable.map((ticket) => (
                   <TableRow key={ticket.id} className="hover:bg-muted/50">
                     <TableCell className="font-mono font-bold text-lg">
                       {ticket.id_senha}

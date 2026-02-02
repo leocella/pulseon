@@ -235,7 +235,7 @@ export function useHistory(filters: {
       if (startDate && endDate) {
         const start = `${startDate}T00:00:00-03:00`;
         const end = `${endDate}T23:59:59-03:00`;
-        
+
         // Use OR filter to include tickets processed in the date range
         query = query.or(
           `hora_emissao.gte.${start},hora_chamada.gte.${start},hora_finalizacao.gte.${start}`
@@ -272,5 +272,53 @@ export function useHistory(filters: {
         total: count || 0
       };
     },
+  });
+}
+
+// Fetch ALL history stats (no pagination) for stats cards and CSV export
+export function useHistoryAll(filters: {
+  startDate?: string;
+  endDate?: string;
+  tipo?: TipoAtendimento;
+  atendente?: string;
+  unidade?: string;
+}) {
+  const { startDate, endDate, tipo, atendente, unidade } = filters;
+  const unit = unidade || UNIDADE;
+
+  return useQuery({
+    queryKey: ['historyAll', unit, startDate, endDate, tipo, atendente],
+    queryFn: async () => {
+      let query = supabase
+        .from('fila_atendimento')
+        .select('*') // Busca todos os campos para o CSV funcionar corretamente
+        .eq('unidade', unit)
+        .order('hora_emissao', { ascending: false });
+
+      if (startDate && endDate) {
+        // Ajuste nas datas para pegar o dia inteiro corretamente (fuso horário local)
+        // Adiciona T00:00:00 e T23:59:59 para garantir que pegue o dia todo
+        const start = `${startDate}T00:00:00`;
+        const end = `${endDate}T23:59:59`;
+
+        // Filtro simples por data de emissão é mais performático e geralmente o esperado para relatórios
+        query = query.gte('hora_emissao', start).lte('hora_emissao', end);
+      }
+
+      if (tipo) {
+        query = query.eq('tipo', tipo as any);
+      }
+
+      if (atendente) {
+        query = query.eq('atendente', atendente);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return (data || []) as Ticket[];
+    },
+    // Cache por 1 minuto para evitar muitas requisições pesadas
+    staleTime: 1000 * 60,
   });
 }
