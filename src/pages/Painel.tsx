@@ -108,28 +108,29 @@ export default function Painel() {
 
   // Play alert sound ONLY when a ticket is called or recalled (status must be 'chamado')
   useEffect(() => {
-    // Only process tickets with status 'chamado' - ignore 'em_atendimento', 'finalizado' and others
+    // Only process tickets with status 'chamado' - ignore all other statuses completely
     if (!currentTicket || currentTicket.status !== 'chamado') {
-      // Don't reset lastCalledTicketRef here - we need to track across status changes
       return;
     }
 
     // Check if this is a new call or a recall (same ID but different call time)
-    const isNewCall = !lastCalledTicketRef.current || currentTicket.id !== lastCalledTicketRef.current.id;
-    const isRecall = lastCalledTicketRef.current && 
-                    currentTicket.id === lastCalledTicketRef.current.id && 
-                    currentTicket.hora_chamada !== lastCalledTicketRef.current.hora_chamada;
+    const lastRef = lastCalledTicketRef.current;
+    const isNewCall = !lastRef || currentTicket.id !== lastRef.id;
+    const isRecall = lastRef && 
+                    currentTicket.id === lastRef.id && 
+                    currentTicket.hora_chamada !== lastRef.hora_chamada;
 
+    // Only play sound for new calls or recalls - never for status changes
     if ((isNewCall || isRecall) && soundEnabled && hasUserInteracted) {
       console.log(isRecall ? 'Rechamada detectada, tocando som...' : 'Nova senha chamada, tocando som...');
       playAlertSound();
+      
+      // Update ref immediately after playing to prevent double triggers
+      lastCalledTicketRef.current = {
+        id: currentTicket.id,
+        hora_chamada: currentTicket.hora_chamada
+      };
     }
-
-    // Update ref only when processing a 'chamado' ticket
-    lastCalledTicketRef.current = {
-      id: currentTicket.id,
-      hora_chamada: currentTicket.hora_chamada
-    };
   }, [currentTicket, soundEnabled, hasUserInteracted, playAlertSound]);
 
   // Convert database media items to MediaItem format - memoized to prevent unnecessary re-renders
