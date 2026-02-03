@@ -513,6 +513,7 @@ export default function Historico() {
               <SelectItem value="chamado">Chamado</SelectItem>
               <SelectItem value="em_atendimento">Em Atendimento</SelectItem>
               <SelectItem value="finalizado">Finalizado</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
               <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
             </SelectContent>
           </Select>
@@ -539,7 +540,8 @@ export default function Historico() {
           )}
 
           <div className="ml-auto text-sm text-muted-foreground">
-            {ticketsTable.length} de {total} registro{total !== 1 ? 's' : ''}
+            {ticketsTable.length} registro{ticketsTable.length !== 1 ? 's' : ''} na página
+            {(status !== 'todos' || searchSenha) && ` (${statistics.totalAtendimentos} no período)`}
           </div>
         </div>
       </Card>
