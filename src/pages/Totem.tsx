@@ -111,11 +111,11 @@ export default function Totem() {
         setState('print_error');
       }
 
-      // Auto-reset after 8 seconds
+      // Auto-reset after 3 seconds (para liberar rápido a nova senha)
       setTimeout(() => {
         setState('idle');
         setGeneratedTicket(null);
-      }, 8000);
+      }, 3000);
 
     } catch (error) {
       console.error('Error generating ticket:', error);
