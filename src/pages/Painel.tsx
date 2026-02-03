@@ -106,30 +106,32 @@ export default function Painel() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Play alert sound ONLY when a ticket is called or recalled (status must be 'chamado')
+  // Play alert sound ONLY when a ticket is called/recalled (based on hora_chamada progression)
+  // This avoids false positives when finishing a ticket causes the "current" ticket to switch
+  // back to an older (already-called) ticket.
   useEffect(() => {
-    // Only process tickets with status 'chamado' - ignore all other statuses completely
-    if (!currentTicket || currentTicket.status !== 'chamado') {
+    if (!currentTicket || currentTicket.status !== 'chamado' || !currentTicket.hora_chamada) {
       return;
     }
 
-    // Check if this is a new call or a recall (same ID but different call time)
-    const lastRef = lastCalledTicketRef.current;
-    const isNewCall = !lastRef || currentTicket.id !== lastRef.id;
-    const isRecall = lastRef && 
-                    currentTicket.id === lastRef.id && 
-                    currentTicket.hora_chamada !== lastRef.hora_chamada;
+    const last = lastCalledTicketRef.current;
+    const lastTime = last?.hora_chamada;
+    const callTime = currentTicket.hora_chamada;
 
-    // Only play sound for new calls or recalls - never for status changes
-    if ((isNewCall || isRecall) && soundEnabled && hasUserInteracted) {
-      console.log(isRecall ? 'Rechamada detectada, tocando som...' : 'Nova senha chamada, tocando som...');
+    // Consider it a "new call event" only if hora_chamada moves forward (or same second but different ticket).
+    const isNewCallTime = !lastTime || callTime > lastTime;
+    const isSameTimeDifferentTicket = !!lastTime && callTime === lastTime && last?.id !== currentTicket.id;
+    const isNewCallEvent = isNewCallTime || isSameTimeDifferentTicket;
+
+    // Update the ref whenever we see a newer call event (even if sound is disabled),
+    // so we don't play sound later for an old call.
+    if (isNewCallEvent) {
+      lastCalledTicketRef.current = { id: currentTicket.id, hora_chamada: callTime };
+    }
+
+    if (isNewCallEvent && soundEnabled && hasUserInteracted) {
+      console.log('Chamada/rechamada detectada (hora_chamada avançou), tocando som...');
       playAlertSound();
-      
-      // Update ref immediately after playing to prevent double triggers
-      lastCalledTicketRef.current = {
-        id: currentTicket.id,
-        hora_chamada: currentTicket.hora_chamada
-      };
     }
   }, [currentTicket, soundEnabled, hasUserInteracted, playAlertSound]);
 
