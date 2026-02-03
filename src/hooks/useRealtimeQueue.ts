@@ -27,6 +27,7 @@ export function useRealtimeQueue(unidade?: string) {
           queryClient.invalidateQueries({ queryKey: ['waitingTickets'] });
           queryClient.invalidateQueries({ queryKey: ['activeTickets'] });
           queryClient.invalidateQueries({ queryKey: ['recentlyCalledTickets'] });
+          queryClient.invalidateQueries({ queryKey: ['myCurrentTicket'] });
           queryClient.invalidateQueries({ queryKey: ['history'] });
         }
       )
