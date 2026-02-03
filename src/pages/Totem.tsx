@@ -98,6 +98,16 @@ export default function Totem() {
       setGeneratedTicket({ id_senha: result.id_senha, tipo });
       setState('success');
 
+      // Flag para evitar que a impressão mude o estado após o reset
+      let hasReset = false;
+
+      // Auto-reset after 3 seconds (para liberar rápido a nova senha)
+      setTimeout(() => {
+        hasReset = true;
+        setState('idle');
+        setGeneratedTicket(null);
+      }, 3000);
+
       // Impressão roda em background (não bloqueia a UI)
       printTicket({
         senha: result.id_senha,
@@ -106,20 +116,16 @@ export default function Totem() {
         unidade: UNIDADE,
         hora: new Date().toISOString(),
       }).then(printed => {
-        if (!printed) {
-          // Se falhar impressão, apenas mostra aviso (senha já foi gerada!)
+        // Só muda estado se ainda não resetou
+        if (!printed && !hasReset) {
           setState('print_error');
         }
       }).catch(err => {
         console.error('Erro na impressão:', err);
-        setState('print_error');
+        if (!hasReset) {
+          setState('print_error');
+        }
       });
-
-      // Auto-reset after 3 seconds (para liberar rápido a nova senha)
-      setTimeout(() => {
-        setState('idle');
-        setGeneratedTicket(null);
-      }, 3000);
 
     } catch (error) {
       console.error('Error generating ticket:', error);
