@@ -94,22 +94,26 @@ export default function Totem() {
         throw new Error('Resposta inválida ao gerar senha');
       }
 
+      // Mostra a senha IMEDIATAMENTE para o usuário
       setGeneratedTicket({ id_senha: result.id_senha, tipo });
+      setState('success');
 
-      // Try to print
-      const printed = await printTicket({
-        senha: result.id_senha,   // Número da senha (A001, P002, etc)
+      // Impressão roda em background (não bloqueia a UI)
+      printTicket({
+        senha: result.id_senha,
         id_senha: result.id_senha,
         tipo,
         unidade: UNIDADE,
         hora: new Date().toISOString(),
-      });
-
-      if (printed) {
-        setState('success');
-      } else {
+      }).then(printed => {
+        if (!printed) {
+          // Se falhar impressão, apenas mostra aviso (senha já foi gerada!)
+          setState('print_error');
+        }
+      }).catch(err => {
+        console.error('Erro na impressão:', err);
         setState('print_error');
-      }
+      });
 
       // Auto-reset after 3 seconds (para liberar rápido a nova senha)
       setTimeout(() => {

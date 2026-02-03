@@ -22,7 +22,7 @@ function getTipoDisplay(tipo: string): string {
   return tipoMap[tipo] || tipo.toUpperCase();
 }
 
-export async function printTicket(payload: PrintPayload, retries = 2): Promise<boolean> {
+export async function printTicket(payload: PrintPayload, retries = 1): Promise<boolean> {
   const now = new Date();
   const baseUrl = getPrintServerBaseUrl();
   const printUrl = `${baseUrl}/print`;
@@ -52,7 +52,8 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+      // Timeout reduzido para 2s para não bloquear a UI
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
 
       const response = await fetch(printUrl, {
         method: 'POST',
@@ -91,8 +92,8 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
         return false;
       }
 
-      // Aguardar antes de tentar novamente
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Aguardar antes de tentar novamente (reduzido)
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
 
