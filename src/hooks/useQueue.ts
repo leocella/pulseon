@@ -206,7 +206,7 @@ export function useUpdateTicketStatus() {
 }
 
 // Fetch history with filters
-// Busca tickets que foram emitidos OU processados (chamados/finalizados) no período
+// Busca tickets que foram emitidos no período selecionado
 export function useHistory(filters: {
   startDate?: string;
   endDate?: string;
@@ -230,28 +230,18 @@ export function useHistory(filters: {
         .order('hora_emissao', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      // Filter by date range using OR logic:
-      // Show tickets that were EMITTED in the range OR CALLED/FINISHED in the range
+      // Filtro por data de emissão - consistente com useHistoryAll
       if (startDate && endDate) {
-        const start = `${startDate}T00:00:00-03:00`;
-        const end = `${endDate}T23:59:59-03:00`;
-
-        // Use OR filter to include tickets processed in the date range
-        query = query.or(
-          `hora_emissao.gte.${start},hora_chamada.gte.${start},hora_finalizacao.gte.${start}`
-        );
-        query = query.or(
-          `hora_emissao.lte.${end},hora_chamada.lte.${end},hora_finalizacao.lte.${end}`
-        );
+        const start = `${startDate}T00:00:00`;
+        const end = `${endDate}T23:59:59`;
+        query = query.gte('hora_emissao', start).lte('hora_emissao', end);
       } else {
-        // Fallback to simple date filtering
         if (startDate) {
-          const start = `${startDate}T00:00:00-03:00`;
+          const start = `${startDate}T00:00:00`;
           query = query.gte('hora_emissao', start);
         }
-
         if (endDate) {
-          const end = `${endDate}T23:59:59-03:00`;
+          const end = `${endDate}T23:59:59`;
           query = query.lte('hora_emissao', end);
         }
       }
