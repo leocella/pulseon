@@ -52,13 +52,13 @@ import {
 } from '@/hooks/useManualQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { TicketNumber } from '@/components/TicketNumber';
-import { TicketBadge, StatusBadge } from '@/components/TicketBadge';
+import { TicketBadge } from '@/components/TicketBadge';
 import { SecretariaAuth } from '@/components/SecretariaAuth';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 // Types
@@ -90,13 +90,13 @@ function getWaitingTime(horaEmissao: string): string {
     const emissao = new Date(horaEmissao);
     const now = new Date();
     const diffMs = now.getTime() - emissao.getTime();
-    
+
     // Se for de outro dia, mostrar "de ontem" ou similar
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours >= 24) {
       return `mais de ${Math.floor(diffHours / 24)} dia(s)`;
     }
-    
+
     return formatDistanceToNow(emissao, {
       locale: ptBR,
       addSuffix: false
@@ -111,10 +111,10 @@ function formatTimeBrasilia(dateStr: string): string {
   try {
     const date = new Date(dateStr);
     // Formatar usando o locale pt-BR que automaticamente usa o fuso do navegador
-    return date.toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   } catch {
     return '-';
@@ -164,8 +164,6 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const [confirmCallDialogOpen, setConfirmCallDialogOpen] = useState(false);
   const [pendingCallTicket, setPendingCallTicket] = useState<Ticket | null>(null);
 
-  // Query client for manual invalidation
-  const queryClient = useQueryClient();
 
   // Restore config from localStorage
   useEffect(() => {
@@ -183,13 +181,14 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   useRealtimeQueue(unidade);
 
   // Fetch all tickets (waiting + current being attended)
-  const { data: waitingTickets = [], isLoading: loadingWaiting } = useWaitingTickets(
+  const { data: waitingTickets = [], isLoading: loadingWaiting, refetch: refetchWaiting } = useWaitingTickets(
     undefined,
     isInitialized ? unidade : undefined
   );
 
   // Fetch current ticket being attended by this attendant
-  const { data: myCurrentTicket } = useQuery({
+  // Polling reduzido para economizar recursos em PCs lentos - realtime é o canal primário
+  const { data: myCurrentTicket, refetch: refetchMyTicket } = useQuery({
     queryKey: ['myCurrentTicket', unidade, atendente],
     queryFn: async () => {
       if (!atendente) return null;
@@ -208,7 +207,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       return data as Ticket | null;
     },
     enabled: isInitialized && !configMode && !!atendente,
-    refetchInterval: 5000,
+    refetchInterval: 15000, // 15 segundos - reduzido para economizar recursos
+    staleTime: 5000, // Considera dados frescos por 5 segundos
   });
 
   // Mutations
@@ -330,10 +330,12 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       });
       toast.success(`Chamando senha ${ticket.id_senha}`);
       setSelectedTicketId(ticket.id);
-      queryClient.invalidateQueries({ queryKey: ['myCurrentTicket'] });
+      // Força atualização imediata do ticket atual
+      await refetchMyTicket();
+      await refetchWaiting();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao chamar senha');
-      queryClient.invalidateQueries({ queryKey: ['waitingTickets'] });
+      await refetchWaiting();
     }
   };
 
@@ -362,6 +364,13 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
     }
   };
 
+  // Função para forçar atualização manual da tela
+  const handleManualRefresh = async () => {
+    toast.info('Atualizando...');
+    await Promise.all([refetchWaiting(), refetchMyTicket()]);
+    toast.success('Atualizado!');
+  };
+
   const handleSkip = async () => {
     if (!skipReason.trim()) {
       toast.error('Informe o motivo');
@@ -381,7 +390,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       setSkipDialogOpen(false);
       setSkipReason('');
       setSelectedTicketId(null);
-      queryClient.invalidateQueries({ queryKey: ['myCurrentTicket'] });
+      // Força atualização imediata
+      await Promise.all([refetchMyTicket(), refetchWaiting()]);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao pular senha');
     }
@@ -397,7 +407,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
         guiche: guiche || undefined,
       });
       toast.success('Atendimento iniciado');
-      queryClient.invalidateQueries({ queryKey: ['myCurrentTicket'] });
+      // Força atualização imediata
+      await refetchMyTicket();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao iniciar atendimento');
     }
@@ -413,7 +424,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       });
       toast.success('Atendimento finalizado');
       setSelectedTicketId(null);
-      queryClient.invalidateQueries({ queryKey: ['myCurrentTicket'] });
+      // Força atualização imediata
+      await Promise.all([refetchMyTicket(), refetchWaiting()]);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao finalizar');
     }
@@ -430,7 +442,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       });
       toast.warning('Marcado como não compareceu');
       setSelectedTicketId(null);
-      queryClient.invalidateQueries({ queryKey: ['myCurrentTicket'] });
+      // Força atualização imediata
+      await Promise.all([refetchMyTicket(), refetchWaiting()]);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao marcar não compareceu');
     }
@@ -517,6 +530,14 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
               <div className="text-sm font-medium">{atendente}</div>
               {guiche && <div className="text-xs text-muted-foreground">{guiche}</div>}
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleManualRefresh}
+              title="Atualizar lista"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
