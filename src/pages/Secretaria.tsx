@@ -60,6 +60,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 // Types
 import type { TipoAtendimento, StatusAtendimento } from '@/types/queue';
@@ -144,6 +145,8 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 };
 
 function SecretariaPanel({ unidade }: SecretariaPanelProps) {
+  const { user } = useAuth();
+  
   // State
   const [atendente, setAtendente] = useState('');
   const [guiche, setGuiche] = useState('');
@@ -164,18 +167,43 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const [confirmCallDialogOpen, setConfirmCallDialogOpen] = useState(false);
   const [pendingCallTicket, setPendingCallTicket] = useState<Ticket | null>(null);
 
+  // Buscar display_name do user_roles para o usuário logado
+  const { data: userDisplayName } = useQuery({
+    queryKey: ['userDisplayName', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('display_name')
+        .eq('user_id', user.id)
+        .not('display_name', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      return data?.display_name || null;
+    },
+    enabled: !!user?.id,
+  });
 
-  // Restore config from localStorage
+  // Restore config from localStorage, or auto-fill from user data
   useEffect(() => {
     const savedAtendente = localStorage.getItem('atendente_nome');
     const savedGuiche = localStorage.getItem('atendente_guiche');
+    
     if (savedAtendente) {
       setAtendente(savedAtendente);
       setGuiche(savedGuiche || '');
       setConfigMode(false);
+    } else if (userDisplayName) {
+      // Auto-preencher com o display_name do banco
+      setAtendente(userDisplayName);
+    } else if (user?.email) {
+      // Fallback: usar parte do email antes do @
+      const emailName = user.email.split('@')[0];
+      setAtendente(emailName);
     }
+    
     setIsInitialized(true);
-  }, []);
+  }, [userDisplayName, user?.email]);
 
   // Enable realtime
   useRealtimeQueue(unidade);
