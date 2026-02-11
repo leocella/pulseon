@@ -47,6 +47,9 @@ export function SecretariaAuth({ children }: SecretariaAuthProps) {
 
   const handleLogout = async () => {
     localStorage.removeItem(SECRETARIA_KEY);
+    // Clear old non-namespaced keys
+    localStorage.removeItem('atendente_nome');
+    localStorage.removeItem('atendente_guiche');
     await signOut();
     navigate('/login');
     toast.info('Sessão encerrada');

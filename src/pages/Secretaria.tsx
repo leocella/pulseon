@@ -184,26 +184,30 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
     enabled: !!user?.id,
   });
 
+  // Keys namespaced by user ID to avoid cross-user data leaks
+  const storageKeyAtendente = user?.id ? `atendente_nome_${user.id}` : null;
+  const storageKeyGuiche = user?.id ? `atendente_guiche_${user.id}` : null;
+
   // Restore config from localStorage, or auto-fill from user data
   useEffect(() => {
-    const savedAtendente = localStorage.getItem('atendente_nome');
-    const savedGuiche = localStorage.getItem('atendente_guiche');
+    if (!storageKeyAtendente) return;
+
+    const savedAtendente = localStorage.getItem(storageKeyAtendente);
+    const savedGuiche = storageKeyGuiche ? localStorage.getItem(storageKeyGuiche) : null;
     
     if (savedAtendente) {
       setAtendente(savedAtendente);
       setGuiche(savedGuiche || '');
       setConfigMode(false);
     } else if (userDisplayName) {
-      // Auto-preencher com o display_name do banco
       setAtendente(userDisplayName);
     } else if (user?.email) {
-      // Fallback: usar parte do email antes do @
       const emailName = user.email.split('@')[0];
       setAtendente(emailName);
     }
     
     setIsInitialized(true);
-  }, [userDisplayName, user?.email]);
+  }, [userDisplayName, user?.email, storageKeyAtendente]);
 
   // Enable realtime
   useRealtimeQueue(unidade);
@@ -331,8 +335,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   // Handlers
   const handleSaveConfig = () => {
     if (atendente.trim()) {
-      localStorage.setItem('atendente_nome', atendente.trim());
-      localStorage.setItem('atendente_guiche', guiche.trim());
+      if (storageKeyAtendente) localStorage.setItem(storageKeyAtendente, atendente.trim());
+      if (storageKeyGuiche) localStorage.setItem(storageKeyGuiche, guiche.trim());
       setConfigMode(false);
     } else {
       toast.error('Por favor, identifique-se');
