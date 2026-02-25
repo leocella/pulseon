@@ -300,6 +300,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      reset_daily_queue: { Args: never; Returns: undefined }
       skip_ticket: {
         Args: { p_atendente: string; p_motivo: string; p_ticket_id: string }
         Returns: {
