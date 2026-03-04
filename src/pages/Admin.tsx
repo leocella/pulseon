@@ -54,6 +54,22 @@ type MediaType = 'image' | 'video' | 'external';
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB (antes 5MB)
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB (antes 50MB)
 
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'];
+
+const getFileExtension = (file: File) => file.name.split('.').pop()?.toLowerCase() || '';
+
+const inferFileMediaType = (file: File): 'image' | 'video' | null => {
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+
+    const extension = getFileExtension(file);
+    if (IMAGE_EXTENSIONS.includes(extension)) return 'image';
+    if (VIDEO_EXTENSIONS.includes(extension)) return 'video';
+
+    return null;
+};
+
 function AdminContent() {
     const navigate = useNavigate();
     const { signOut, user } = useAuth();
@@ -81,7 +97,14 @@ function AdminContent() {
 
     // Validate file size
     const validateFileSize = (file: File): boolean => {
-        const maxSize = file.type.startsWith('image/') ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+        const detectedType = inferFileMediaType(file);
+
+        if (!detectedType) {
+            toast.error('Formato não suportado. Use imagens (JPG/PNG/WEBP) ou vídeos (MP4/WEBM/MOV).');
+            return false;
+        }
+
+        const maxSize = detectedType === 'image' ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
         if (file.size > maxSize) {
             const maxSizeMB = maxSize / 1024 / 1024;
             toast.error(`Arquivo muito grande! Tamanho máximo: ${maxSizeMB}MB`);
@@ -183,13 +206,24 @@ function AdminContent() {
             const file = e.target.files?.[0];
             if (!file) return;
 
+            const detectedType = inferFileMediaType(file);
+            if (!detectedType) {
+                toast.error('Formato não suportado para upload');
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
+            }
+
+            if (detectedType !== mediaType && detectedType !== 'external') {
+                setMediaType(detectedType);
+            }
+
             if (!validateFileSize(file)) {
                 if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
 
             // Compress image if it's an image
-            if (file.type.startsWith('image/')) {
+            if (detectedType === 'image') {
                 toast.info('Processando imagem...');
 
                 // Detectar se é retrato antes de comprimir
@@ -208,14 +242,12 @@ function AdminContent() {
                 } else {
                     toast.success('Imagem comprimida!');
                 }
-            } else if (file.type.startsWith('video/')) {
+            } else {
                 // Create video preview
                 const url = URL.createObjectURL(file);
                 setVideoPreview(url);
                 setSelectedFile(file);
                 toast.success('Vídeo selecionado!');
-            } else {
-                setSelectedFile(file);
             }
         } catch (error) {
             console.error('Error selecting file:', error);
@@ -244,11 +276,17 @@ function AdminContent() {
                     return;
                 }
 
+                const detectedType = inferFileMediaType(selectedFile);
+                if (!detectedType || detectedType === 'external') {
+                    toast.error('Arquivo inválido para upload');
+                    return;
+                }
+
                 await uploadMedia.mutateAsync({
-                    type: mediaType,
+                    type: detectedType,
                     file: selectedFile,
                     alt: altText || selectedFile.name,
-                    duration: mediaType === 'image' ? duration : undefined,
+                    duration: detectedType === 'image' ? duration : undefined,
                 });
             }
 
@@ -359,10 +397,13 @@ function AdminContent() {
             setBulkUploadProgress({ current: i + 1, total: selectedFiles.length });
 
             try {
+                const fileType = inferFileMediaType(file);
+                if (!fileType || fileType === 'external') {
+                    throw new Error('Formato de arquivo não suportado');
+                }
+
                 let fileToUpload = file;
-                const isImage = file.type.startsWith('image/');
-                const isVideo = file.type.startsWith('video/');
-                const type: MediaType = isImage ? 'image' : isVideo ? 'video' : 'image';
+                const isImage = fileType === 'image';
 
                 // Compress images
                 if (isImage) {
@@ -370,7 +411,7 @@ function AdminContent() {
                 }
 
                 await uploadMedia.mutateAsync({
-                    type,
+                    type: fileType,
                     file: fileToUpload,
                     alt: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for alt text
                     duration: isImage ? duration : undefined,
@@ -578,7 +619,7 @@ function AdminContent() {
                                                 key={`file-input-${mediaType}`}
                                                 ref={fileInputRef}
                                                 type="file"
-                                                accept={mediaType === 'image' ? 'image/*' : 'video/*'}
+                                                accept="image/*,video/*,.mp4,.webm,.mov,.avi,.mkv,.m4v,.jpg,.jpeg,.png,.webp"
                                                 onChange={handleFileSelect}
                                             />
                                             {selectedFile && (
