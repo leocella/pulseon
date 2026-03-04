@@ -213,7 +213,7 @@ function AdminContent() {
                 return;
             }
 
-            if (detectedType !== mediaType && detectedType !== 'external') {
+            if (detectedType !== mediaType) {
                 setMediaType(detectedType);
             }
 
@@ -277,7 +277,7 @@ function AdminContent() {
                 }
 
                 const detectedType = inferFileMediaType(selectedFile);
-                if (!detectedType || detectedType === 'external') {
+                if (!detectedType) {
                     toast.error('Arquivo inválido para upload');
                     return;
                 }
@@ -398,7 +398,7 @@ function AdminContent() {
 
             try {
                 const fileType = inferFileMediaType(file);
-                if (!fileType || fileType === 'external') {
+                if (!fileType) {
                     throw new Error('Formato de arquivo não suportado');
                 }
 
