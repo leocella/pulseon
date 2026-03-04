@@ -214,7 +214,9 @@ function AdminContent() {
             }
 
             if (detectedType !== mediaType) {
-                setMediaType(detectedType);
+                toast.error(`Tipo inválido para este campo. Selecione ${mediaType === 'image' ? 'uma imagem' : 'um vídeo'}.`);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
             }
 
             if (!validateFileSize(file)) {
@@ -480,7 +482,7 @@ function AdminContent() {
         }));
 
     return (
-        <div className="min-h-screen bg-background p-6 pb-20">
+        <div className="min-h-screen bg-background p-6 pb-20" translate="no">
             {/* Header */}
             <header className="mb-8 flex justify-between items-start">
                 <div>
@@ -616,7 +618,6 @@ function AdminContent() {
                                         <div>
                                             <Label>Arquivo</Label>
                                             <Input
-                                                key={`file-input-${mediaType}`}
                                                 ref={fileInputRef}
                                                 type="file"
                                                 accept="image/*,video/*,.mp4,.webm,.mov,.avi,.mkv,.m4v,.jpg,.jpeg,.png,.webp"
