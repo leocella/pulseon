@@ -67,7 +67,7 @@ export default function Login() {
 
             const roles = (rolesData as RoleRow[] | null)?.map((r) => r.role) ?? [];
             if (roles.includes('admin')) {
-                navigate('/admin', { replace: true });
+                navigate('/', { replace: true });
                 return;
             }
 

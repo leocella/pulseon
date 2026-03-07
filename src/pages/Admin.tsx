@@ -484,7 +484,7 @@ function AdminContent() {
     return (
         <div className="min-h-screen bg-background p-6 pb-20" translate="no">
             {/* Header */}
-            <header className="mb-8 flex justify-between items-start">
+            <header className="mb-8 flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground mb-2">Painel Administrativo</h1>
                     <p className="text-muted-foreground">Gerenciar mídias exibidas no Painel TV</p>
@@ -493,17 +493,26 @@ function AdminContent() {
                         <p className="text-xs text-muted-foreground mt-1">Logado como: {user.email}</p>
                     )}
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                        await signOut();
-                        navigate('/login');
-                    }}
-                >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sair
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => navigate('/')}
+                    >
+                        Voltar ao Menu
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                            await signOut();
+                            navigate('/login');
+                        }}
+                    >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sair
+                    </Button>
+                </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -557,26 +566,26 @@ function AdminContent() {
                                     {/* Media Type */}
                                     <div>
                                         <Label>Tipo de Mídia</Label>
-                                    <Select 
-                                        value={mediaType} 
-                                        onValueChange={(v) => {
-                                            try {
-                                                console.log('Changing media type to:', v);
-                                                // Reset file selection when changing type
-                                                setSelectedFile(null);
-                                                setVideoPreview(null);
-                                                // Use setTimeout to avoid DOM conflicts with portal
-                                                setTimeout(() => {
-                                                    if (fileInputRef.current) {
-                                                        fileInputRef.current.value = '';
-                                                    }
-                                                }, 0);
-                                                setMediaType(v as MediaType);
-                                            } catch (error) {
-                                                console.error('Error changing media type:', error);
-                                            }
-                                        }}
-                                    >
+                                        <Select
+                                            value={mediaType}
+                                            onValueChange={(v) => {
+                                                try {
+                                                    console.log('Changing media type to:', v);
+                                                    // Reset file selection when changing type
+                                                    setSelectedFile(null);
+                                                    setVideoPreview(null);
+                                                    // Use setTimeout to avoid DOM conflicts with portal
+                                                    setTimeout(() => {
+                                                        if (fileInputRef.current) {
+                                                            fileInputRef.current.value = '';
+                                                        }
+                                                    }, 0);
+                                                    setMediaType(v as MediaType);
+                                                } catch (error) {
+                                                    console.error('Error changing media type:', error);
+                                                }
+                                            }}
+                                        >
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
