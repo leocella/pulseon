@@ -164,8 +164,8 @@ export default function Totem() {
       <div className="text-center mb-12">
         {/* Logo com área clicável secreta */}
         <img
-          src="/biocenter-logo.jpg"
-          alt="Biocenter Logo"
+          src="/platano-logo.png"
+          alt="Plátano Logo"
           className="h-24 md:h-32 mx-auto mb-6 object-contain cursor-default select-none"
           onClick={handleLogoTap}
           draggable={false}

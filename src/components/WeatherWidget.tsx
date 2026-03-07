@@ -7,9 +7,9 @@ interface WeatherData {
     icon: string;
 }
 
-// Coordenadas exatas de Guaíra-PR
-const GUAIRA_LAT = -24.0853;
-const GUAIRA_LON = -54.2569;
+// Coordenadas exatas de Querência-MT
+const QUERENCIA_LAT = -12.609294;
+const QUERENCIA_LON = -52.182102;
 
 // Mapeamento de códigos WMO para condições em português
 const WMO_CODES: Record<number, string> = {
@@ -45,7 +45,7 @@ export function WeatherWidget() {
         const fetchWeather = async () => {
             try {
                 // Open-Meteo API - gratuita, sem chave, dados precisos
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${GUAIRA_LAT}&longitude=${GUAIRA_LON}&current=temperature_2m,weather_code&timezone=America/Sao_Paulo`;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${QUERENCIA_LAT}&longitude=${QUERENCIA_LON}&current=temperature_2m,weather_code&timezone=America/Sao_Paulo`;
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -121,7 +121,7 @@ export function WeatherWidget() {
                     {weather.temperature}°C
                 </div>
                 <div className="text-sm opacity-80 -mt-1">
-                    Guaíra-PR • {weather.condition}
+                    Querência-MT • {weather.condition}
                 </div>
             </div>
         </div>

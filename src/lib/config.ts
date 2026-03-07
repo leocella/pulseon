@@ -1,5 +1,5 @@
 // Configuration for the queue system
-export const UNIDADE = import.meta.env.VITE_UNIDADE || 'Unidade Guaíra';
+export const UNIDADE = import.meta.env.VITE_UNIDADE || 'Querência-MT';
 
 // Print service URL (local PC running print service)
 export const PRINT_SERVICE_URL = import.meta.env.VITE_PRINT_SERVICE_URL || 'http://localhost:3000/print';

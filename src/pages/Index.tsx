@@ -54,12 +54,12 @@ export default function Index() {
       {/* Header */}
       <div className="text-center mb-12">
         <img
-          src="/biocenter-logo.jpg"
-          alt="Laboratório Biocenter"
+          src="/platano-logo.png"
+          alt="Laboratório Plátano"
           className="h-24 md:h-32 mx-auto mb-6 rounded-lg shadow-lg object-contain"
         />
         <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2">
-          Laboratório Biocenter
+          Laboratório Plátano
         </h1>
         <p className="text-xl text-primary font-medium mb-3">
           Sempre ao seu lado

@@ -169,12 +169,12 @@ export default function Painel() {
         {/* Coluna Central: Logo + Nome do Lab */}
         <div className='flex items-center justify-center gap-4 flex-1'>
           <img
-            src='/biocenter-logo.jpg'
-            alt='Laboratório Biocenter'
+            src='/platano-logo.png'
+            alt='Laboratório Plátano'
             className='h-14 w-auto rounded-lg shadow-lg'
           />
           <div className='text-white text-center'>
-            <span className='text-2xl font-bold block tracking-wide'>Laboratório Biocenter</span>
+            <span className='text-2xl font-bold block tracking-wide'>Laboratório Plátano</span>
             <span className='text-sm opacity-90 block'>Sempre ao seu lado</span>
           </div>
         </div>
