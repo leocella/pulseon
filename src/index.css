@@ -17,12 +17,12 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Laranja Biocenter #FF8C00 = hsl(33, 100%, 50%) */
-    --primary: 33 100% 50%;
+    /* Verde Plátano #1d5f3d = hsl(149, 53%, 24%) approx */
+    --primary: 149 53% 24%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 33 100% 96%;
-    --secondary-foreground: 33 100% 20%;
+    --secondary: 149 53% 96%;
+    --secondary-foreground: 149 53% 15%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
@@ -35,25 +35,25 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 33 100% 50%;
+    --ring: 149 53% 24%;
 
     --radius: 0.75rem;
 
-    /* Custom colors for queue system - Paleta Laranja Biocenter */
-    --normal: 33 100% 50%;
-    /* Laranja principal */
+    /* Custom colors for queue system - Paleta Verde Plátano */
+    --normal: 149 53% 24%;
+    /* Verde principal */
     --normal-foreground: 0 0% 100%;
-    --preferencial: 33 100% 40%;
-    /* Laranja escuro */
+    --preferencial: 149 40% 35%;
+    /* Verde claro preferencial */
     --preferencial-foreground: 0 0% 100%;
     --laudo: 200 100% 50%;
-    /* Azul para Laudos */
+    /* Azul para Laudos mantém */
     --laudo-foreground: 0 0% 100%;
-    --chamado: 33 100% 60%;
-    /* Laranja claro */
-    --chamado-foreground: 33 100% 15%;
-    --atendimento: 33 100% 35%;
-    /* Laranja mais escuro */
+    --chamado: 149 60% 40%;
+    /* Verde destaque (chamada) */
+    --chamado-foreground: 0 0% 100%;
+    --atendimento: 149 70% 20%;
+    /* Verde escuro para atendimento */
     --atendimento-foreground: 0 0% 100%;
     --finalizado: 210 40% 70%;
     --nao-compareceu: 0 60% 50%;
@@ -66,12 +66,12 @@
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 33 100% 50%;
+    --sidebar-primary: 149 53% 24%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 33 100% 96%;
-    --sidebar-accent-foreground: 33 100% 20%;
+    --sidebar-accent: 149 53% 96%;
+    --sidebar-accent-foreground: 149 53% 15%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 33 100% 50%;
+    --sidebar-ring: 149 53% 24%;
   }
 
   .dark {
