@@ -72,7 +72,7 @@ interface Ticket {
   status: StatusAtendimento;
   hora_emissao: string;
   hora_chamada?: string;
-  hora_fim?: string;
+  hora_finalizacao?: string;
   atendente?: string;
   unidade: string;
   observacao?: string;
@@ -146,7 +146,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 
 function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   const { user } = useAuth();
-  
+
   // State
   const [atendente, setAtendente] = useState('');
   const [guiche, setGuiche] = useState('');
@@ -194,7 +194,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
 
     const savedAtendente = localStorage.getItem(storageKeyAtendente);
     const savedGuiche = storageKeyGuiche ? localStorage.getItem(storageKeyGuiche) : null;
-    
+
     if (savedAtendente) {
       setAtendente(savedAtendente);
       setGuiche(savedGuiche || '');
@@ -205,7 +205,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       const emailName = user.email.split('@')[0];
       setAtendente(emailName);
     }
-    
+
     setIsInitialized(true);
   }, [userDisplayName, user?.email, storageKeyAtendente]);
 
