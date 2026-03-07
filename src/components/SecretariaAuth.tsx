@@ -10,8 +10,7 @@ const SECRETARIA_KEY = 'secretaria_unidade';
 
 // Lista de secretarias disponíveis
 export const SECRETARIAS = [
-  { id: 'Unidade Guaíra', nome: 'Unidade Guaíra' },
-  { id: 'Unidade Terra Roxa', nome: 'Unidade Terra Roxa' },
+  { id: 'Querência-MT', nome: 'Querência-MT' },
 ];
 
 interface SecretariaAuthProps {
@@ -39,7 +38,7 @@ export function SecretariaAuth({ children }: SecretariaAuthProps) {
       toast.error('Você não tem acesso a esta unidade');
       return;
     }
-    
+
     localStorage.setItem(SECRETARIA_KEY, unidade);
     setSelectedUnidade(unidade);
     toast.success(`Unidade ${unidade} selecionada`);
