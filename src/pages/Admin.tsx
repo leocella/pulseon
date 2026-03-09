@@ -51,11 +51,11 @@ import { supabase } from '@/integrations/supabase/client';
 type MediaType = 'image' | 'video' | 'external';
 
 // Max file sizes - Aumentados para suportar arquivos maiores
-const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB (antes 5MB)
-const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB (antes 50MB)
+const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_VIDEO_SIZE = 1000 * 1024 * 1024; // 1GB (1000MB)
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
-const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'];
+const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'wmv', 'flv'];
 
 const getFileExtension = (file: File) => file.name.split('.').pop()?.toLowerCase() || '';
 
@@ -107,7 +107,7 @@ function AdminContent() {
         const maxSize = detectedType === 'image' ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
         if (file.size > maxSize) {
             const maxSizeMB = maxSize / 1024 / 1024;
-            toast.error(`Arquivo muito grande! Tamanho máximo: ${maxSizeMB}MB`);
+            toast.error(`Arquivo muito grande! O painel aceita até ${maxSizeMB}MB, mas o seu arquivo tem ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
             return false;
         }
         return true;
@@ -297,8 +297,18 @@ function AdminContent() {
             resetForm();
         } catch (error: any) {
             console.error('Error adding media:', error);
-            const errorMessage = error?.message || 'Erro desconhecido';
-            toast.error(`Erro ao adicionar mídia: ${errorMessage}`);
+            let errorMessage = error?.message || 'Erro desconhecido';
+
+            // Check specifically for size limits in Supabase
+            if (errorMessage.toLowerCase().includes('payload too large') ||
+                errorMessage.toLowerCase().includes('exceeds scale') ||
+                errorMessage.toLowerCase().includes('limit')) {
+                errorMessage = 'O servidor (Supabase) rejeitou o arquivo por ser muito grande. Recomendamos usar um link do YouTube para vídeos acima de 50MB no plano gratuito.';
+            }
+
+            toast.error(`Erro ao adicionar mídia: ${errorMessage}`, {
+                duration: 5000
+            });
         }
     };
 
@@ -422,7 +432,11 @@ function AdminContent() {
                 successCount++;
             } catch (error: any) {
                 console.error(`Error uploading ${file.name}:`, error);
-                toast.error(`Erro em ${file.name}: ${error?.message || 'Erro desconhecido'}`);
+                let errorMessage = error?.message || 'Erro desconhecido';
+                if (errorMessage.toLowerCase().includes('payload too large') || errorMessage.toLowerCase().includes('limit')) {
+                    errorMessage = 'Servidor rejeitou por tamanho. Use YouTube para arquivos grandes.';
+                }
+                toast.error(`Erro em ${file.name}: ${errorMessage}`);
                 errorCount++;
             }
         }
@@ -646,7 +660,7 @@ function AdminContent() {
                                             )}
                                             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                                 <AlertCircle className="w-3 h-3" />
-                                                Máximo: {mediaType === 'image' ? '50MB' : '500MB'}
+                                                Máximo: {mediaType === 'image' ? '100MB' : '1000MB (1GB)'}
                                                 {mediaType === 'image' && ' (será comprimida automaticamente)'}
                                             </p>
                                         </div>
