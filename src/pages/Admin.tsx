@@ -50,7 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 type MediaType = 'image' | 'video' | 'external';
 
-// Max file sizes - Limitados a 50MB devido ao plano gratuito do Supabase
+// Max file sizes - Limitados a 50MB para garantir performance e compatibilidade
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -303,7 +303,7 @@ function AdminContent() {
             if (errorMessage.toLowerCase().includes('payload too large') ||
                 errorMessage.toLowerCase().includes('exceeds scale') ||
                 errorMessage.toLowerCase().includes('limit')) {
-                errorMessage = 'O servidor (Supabase) rejeitou o arquivo por ser muito grande. Recomendamos usar um link do YouTube para vídeos acima de 50MB no plano gratuito.';
+                errorMessage = 'O arquivo excede o limite permitido pelo servidor. Para vídeos grandes, recomendamos fortemente o uso de links do YouTube para garantir a melhor performance e carregamento instantâneo.';
             }
 
             toast.error(`Erro ao adicionar mídia: ${errorMessage}`, {
@@ -660,8 +660,7 @@ function AdminContent() {
                                             )}
                                             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                                 <AlertCircle className="w-3 h-3" />
-                                                Máximo: 50MB por arquivo (limite do plano gratuito)
-                                                {mediaType === 'image' && ' (será comprimida automaticamente)'}
+                                                Limite de 50MB por arquivo. Recomendamos YouTube para arquivos maiores.
                                             </p>
                                         </div>
                                     )}
