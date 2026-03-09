@@ -50,9 +50,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 type MediaType = 'image' | 'video' | 'external';
 
-// Max file sizes - Aumentados para suportar arquivos maiores
-const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB
-const MAX_VIDEO_SIZE = 1000 * 1024 * 1024; // 1GB (1000MB)
+// Max file sizes - Limitados a 50MB devido ao plano gratuito do Supabase
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
 const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'wmv', 'flv'];
@@ -660,7 +660,7 @@ function AdminContent() {
                                             )}
                                             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                                 <AlertCircle className="w-3 h-3" />
-                                                Máximo: {mediaType === 'image' ? '100MB' : '1000MB (1GB)'}
+                                                Máximo: 50MB por arquivo (limite do plano gratuito)
                                                 {mediaType === 'image' && ' (será comprimida automaticamente)'}
                                             </p>
                                         </div>
@@ -829,8 +829,8 @@ function AdminContent() {
                             <p className="text-sm text-muted-foreground mb-2">Formatos suportados:</p>
                             <ul className="text-xs text-muted-foreground space-y-1">
                                 <li>• Imagens: JPG, PNG, WEBP (max 50MB)</li>
-                                <li>• Vídeos: MP4, WEBM (max 500MB)</li>
-                                <li>• Links: URLs de imagens/vídeos</li>
+                                <li>• Vídeos: MP4, WEBM (max 50MB)</li>
+                                <li>• Links: URLs de imagens/vídeos/YouTube</li>
                             </ul>
                         </div>
 
