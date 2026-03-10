@@ -269,47 +269,58 @@ export default function Painel() {
         <div className='col-span-4 flex flex-col gap-2 min-h-0 overflow-hidden'>
 
           {/* Senha Atual - Atendendo Agora */}
-          <Card className='p-4 bg-card shadow-lg'>
-            <h2 className='text-lg font-bold text-primary mb-3 text-center'>
-              Atendendo Agora
-            </h2>
+          <Card className={`p-4 bg-card shadow-lg transition-all duration-500 ${!currentTicket && recentTickets.length > 0 ? 'opacity-90' : ''}`}>
+            {(() => {
+              const displayTicket = currentTicket || (recentTickets.length > 0 ? recentTickets[0] : null);
+              const isHistoryFallback = !currentTicket && recentTickets.length > 0;
 
-            {loadingCurrent ? (
-              <div className='animate-pulse flex justify-center'>
-                <div className='h-16 w-32 bg-muted rounded-xl' />
-              </div>
-            ) : currentTicket ? (
-              <div className='flex flex-col items-center gap-3'>
-                <TicketNumber
-                  number={currentTicket.id_senha}
-                  size='2xl'
-                  animate={currentTicket.status === 'chamado'}
-                  className={currentTicket.status !== 'chamado' ? 'text-atendimento' : ''}
-                />
+              return (
+                <>
+                  <h2 className='text-lg font-bold text-primary mb-3 text-center'>
+                    {isHistoryFallback ? 'Última Senha Chamada' : 'Atendendo Agora'}
+                  </h2>
 
-                <TicketBadge tipo={currentTicket.tipo} size='md' />
+                  {loadingCurrent || (loadingRecent && !displayTicket) ? (
+                    <div className='animate-pulse flex justify-center'>
+                      <div className='h-16 w-32 bg-muted rounded-xl' />
+                    </div>
+                  ) : displayTicket ? (
+                    <div className='flex flex-col items-center gap-3'>
+                      <TicketNumber
+                        number={displayTicket.id_senha}
+                        size='2xl'
+                        animate={displayTicket.status === 'chamado'}
+                        className={displayTicket.status !== 'chamado' ? 'text-atendimento' : ''}
+                      />
 
-                {currentTicket.atendente && (
-                  <div className='text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1.5'>
-                    {currentTicket.atendente}
-                  </div>
-                )}
+                      <TicketBadge tipo={displayTicket.tipo} size='md' />
 
-                <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-                  <ChevronRight className='w-4 h-4' />
-                  <span>
-                    {currentTicket.status === 'chamado'
-                      ? 'Dirija-se ao atendimento'
-                      : 'Em atendimento'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className='text-center text-muted-foreground py-6'>
-                <Monitor className='w-12 h-12 mx-auto mb-3 opacity-30' />
-                <p className='text-base'>Aguardando chamada</p>
-              </div>
-            )}
+                      {displayTicket.atendente && (
+                        <div className='text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1.5'>
+                          {displayTicket.atendente}
+                        </div>
+                      )}
+
+                      <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                        <ChevronRight className='w-4 h-4' />
+                        <span>
+                          {displayTicket.status === 'chamado'
+                            ? 'Dirija-se ao atendimento'
+                            : displayTicket.status === 'em_atendimento'
+                              ? 'Em atendimento'
+                              : 'Atendimento finalizado'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='text-center text-muted-foreground py-6'>
+                      <Monitor className='w-12 h-12 mx-auto mb-3 opacity-30' />
+                      <p className='text-base'>Aguardando chamada</p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </Card>
 
           {/* Histórico de Senhas Chamadas */}
