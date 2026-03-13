@@ -218,6 +218,9 @@ export default function Totem() {
               <Calendar className="w-10 h-10" />
             </div>
             <span>Agendado</span>
+            <span className="text-lg font-normal opacity-80">
+              Possui horário marcado
+            </span>
           </Button>
 
           {/* Retirada de Laudo Button */}
