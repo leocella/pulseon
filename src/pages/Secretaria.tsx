@@ -126,11 +126,12 @@ function formatTimeBrasilia(dateStr: string): string {
 function getTypePriority(tipo: string): number {
   switch (tipo) {
     case 'Preferencial': return 1;
-    case 'Convênio': return 2;
-    case 'Particular': return 3;
-    case 'Retirada de Laudo': return 4;
-    case 'Normal': return 5;
-    default: return 6;
+    case 'Agendado': return 2;
+    case 'Convênio': return 3;
+    case 'Particular': return 4;
+    case 'Retirada de Laudo': return 5;
+    case 'Normal': return 6;
+    default: return 7;
   }
 }
 
@@ -608,6 +609,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="Preferencial">Preferencial</SelectItem>
+                  <SelectItem value="Agendado">Agendado</SelectItem>
                   <SelectItem value="Normal">Normal</SelectItem>
                   <SelectItem value="Convênio">Convênio</SelectItem>
                   <SelectItem value="Particular">Particular</SelectItem>

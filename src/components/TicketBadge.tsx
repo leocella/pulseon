@@ -18,6 +18,7 @@ export function TicketBadge({ tipo, size = 'md' }: TicketBadgeProps) {
     Normal: 'bg-normal text-normal-foreground',
     Preferencial: 'bg-preferencial text-preferencial-foreground',
     'Retirada de Laudo': 'bg-laudo text-laudo-foreground',
+    Agendado: 'bg-agendado text-agendado-foreground',
   };
 
   return (

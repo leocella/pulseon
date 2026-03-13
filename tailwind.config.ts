@@ -81,6 +81,10 @@ export default {
           DEFAULT: "hsl(var(--atendimento))",
           foreground: "hsl(var(--atendimento-foreground))",
         },
+        agendado: {
+          DEFAULT: "hsl(var(--agendado))",
+          foreground: "hsl(var(--agendado-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

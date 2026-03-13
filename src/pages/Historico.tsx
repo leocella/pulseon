@@ -135,7 +135,7 @@ export default function Historico() {
         naoCompareceu: 0,
         mediaEspera: 0,
         mediaAtendimento: 0,
-        porTipo: { Normal: 0, Preferencial: 0, 'Retirada de Laudo': 0 },
+        porTipo: { Normal: 0, Preferencial: 0, 'Retirada de Laudo': 0, Agendado: 0 },
       };
     }
 
@@ -169,6 +169,7 @@ export default function Historico() {
       Normal: filteredAll.filter(t => t.tipo === 'Normal').length,
       Preferencial: filteredAll.filter(t => t.tipo === 'Preferencial').length,
       'Retirada de Laudo': filteredAll.filter(t => t.tipo === 'Retirada de Laudo').length,
+      Agendado: filteredAll.filter(t => t.tipo === 'Agendado').length,
     };
 
     return {
@@ -385,6 +386,7 @@ export default function Historico() {
                   <div className="flex gap-2 text-sm">
                     <span className="text-normal font-semibold">{statistics.porTipo.Normal}N</span>
                     <span className="text-preferencial font-semibold">{statistics.porTipo.Preferencial}P</span>
+                    <span className="text-agendado font-semibold">{statistics.porTipo.Agendado}S</span>
                     <span className="text-laudo font-semibold">{statistics.porTipo['Retirada de Laudo']}L</span>
                   </div>
                 </div>
@@ -394,6 +396,7 @@ export default function Historico() {
               <div className="text-xs space-y-1">
                 <p><strong>N:</strong> Normal</p>
                 <p><strong>P:</strong> Preferencial</p>
+                <p><strong>S:</strong> Agendado</p>
                 <p><strong>L:</strong> Retirada de Laudo</p>
               </div>
             </TooltipContent>
@@ -492,6 +495,7 @@ export default function Historico() {
                 <SelectItem value="todos">Todos os Tipos</SelectItem>
                 <SelectItem value="Normal">Normal</SelectItem>
                 <SelectItem value="Preferencial">Preferencial</SelectItem>
+                <SelectItem value="Agendado">Agendado</SelectItem>
                 <SelectItem value="Retirada de Laudo">Retirada de Laudo</SelectItem>
               </SelectContent>
             </Select>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserCheck, AlertCircle, CheckCircle, Loader2, FileText, Maximize, Minimize } from 'lucide-react';
+import { UserCheck, AlertCircle, CheckCircle, Loader2, FileText, Maximize, Minimize, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useGenerateTicket } from '@/hooks/useQueue';
@@ -180,7 +180,7 @@ export default function Totem() {
 
       {/* Main Content */}
       {state === 'idle' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl w-full animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl w-full animate-slide-up">
           {/* Normal Button */}
           <Button
             onClick={() => handleGenerateTicket('Normal')}
@@ -206,6 +206,20 @@ export default function Totem() {
             <span>Preferencial</span>
             <span className="text-lg font-normal opacity-80">
               Idosos, gestantes, PCD
+            </span>
+          </Button>
+
+          {/* Agendado Button */}
+          <Button
+            onClick={() => handleGenerateTicket('Agendado')}
+            className="h-64 md:h-80 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-agendado hover:bg-agendado/90 text-agendado-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <Calendar className="w-10 h-10" />
+            </div>
+            <span>Já sou Agendado</span>
+            <span className="text-lg font-normal opacity-80">
+              Possui horário marcado
             </span>
           </Button>
 
