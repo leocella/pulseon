@@ -180,17 +180,17 @@ export default function Totem() {
 
       {/* Main Content */}
       {state === 'idle' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl w-full animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-7xl w-full animate-slide-up">
           {/* Normal Button */}
           <Button
             onClick={() => handleGenerateTicket('Normal')}
-            className="h-64 md:h-80 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-normal hover:bg-normal/90 text-normal-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="h-72 md:h-96 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-normal hover:bg-normal/90 text-normal-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98] p-6 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-              <UserCheck className="w-10 h-10" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <UserCheck className="w-8 h-8 md:w-10 md:h-10" />
             </div>
             <span>Atendimento Normal</span>
-            <span className="text-lg font-normal opacity-80">
+            <span className="text-base md:text-lg font-normal opacity-80">
               Senha iniciada em A
             </span>
           </Button>
@@ -198,13 +198,13 @@ export default function Totem() {
           {/* Preferencial Button */}
           <Button
             onClick={() => handleGenerateTicket('Preferencial')}
-            className="h-64 md:h-80 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-preferencial hover:bg-preferencial/90 text-preferencial-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="h-72 md:h-96 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-preferencial hover:bg-preferencial/90 text-preferencial-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98] p-6 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-              <UserCheck className="w-10 h-10" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <UserCheck className="w-8 h-8 md:w-10 md:h-10" />
             </div>
             <span>Preferencial</span>
-            <span className="text-lg font-normal opacity-80">
+            <span className="text-base md:text-lg font-normal opacity-80">
               Idosos, gestantes, PCD
             </span>
           </Button>
@@ -212,28 +212,28 @@ export default function Totem() {
           {/* Agendado Button */}
           <Button
             onClick={() => handleGenerateTicket('Agendado')}
-            className="h-64 md:h-80 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-agendado hover:bg-agendado/90 text-agendado-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="h-72 md:h-96 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-agendado hover:bg-agendado/90 text-agendado-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98] p-6 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-              <Calendar className="w-10 h-10" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <Calendar className="w-8 h-8 md:w-10 md:h-10" />
             </div>
             <span>Agendado</span>
-            <span className="text-lg font-normal opacity-80">
-              Possui horário marcado
+            <span className="text-base md:text-lg font-normal opacity-80">
+              Senha iniciada em S
             </span>
           </Button>
 
           {/* Retirada de Laudo Button */}
           <Button
             onClick={() => handleGenerateTicket('Retirada de Laudo')}
-            className="h-64 md:h-80 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-laudo hover:bg-laudo/90 text-laudo-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="h-72 md:h-96 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-laudo hover:bg-laudo/90 text-laudo-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98] p-6 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-              <FileText className="w-10 h-10" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <FileText className="w-8 h-8 md:w-10 md:h-10" />
             </div>
             <span>Retirada de Laudo</span>
-            <span className="text-lg font-normal opacity-80">
-              Resultados de exames
+            <span className="text-base md:text-lg font-normal opacity-80">
+              Senha iniciada em L
             </span>
           </Button>
         </div>

@@ -123,7 +123,7 @@ function generateTicketCommands(data) {
   // Cabeçalho
   commands += '--------------------------------\n';
   commands += SIZE_DOUBLE;
-  commands += 'BIOCENTER\n';
+  commands += 'LABORATORIO PLATANO\n';
   commands += SIZE_NORMAL;
   if (tipo) {
     commands += tipo + '\n';
@@ -310,7 +310,7 @@ app.post('/print', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: "Servidor Biocenter Print-Server ativo!",
+    message: "Servidor Laboratorio Platano Print-Server ativo!",
     endpoints: {
       health: "GET /health - Status do servidor e impressora",
       test: "GET /test - Imprime ticket de teste",
@@ -329,7 +329,7 @@ app.get('/print', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
-║     BIOCENTER - Servidor de Impressão via Rede        ║
+║  LABORATORIO PLATANO - Servidor de Impressao  ║
 ╠═══════════════════════════════════════════════════════╣
 ║  Servidor HTTP:  http://localhost:${PORT}                 ║
 ║  Impressora IP:  ${PRINTER_IP.padEnd(36)}║
