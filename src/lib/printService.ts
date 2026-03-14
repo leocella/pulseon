@@ -17,6 +17,7 @@ function getTipoDisplay(tipo: string): string {
   const tipoMap: Record<string, string> = {
     'Normal': 'NORMAL',
     'Preferencial': 'PREFERENCIAL',
+    'Agendado': 'AGENDADO',
     'Retirada de Laudo': 'RETIRADA DE LAUDO',
   };
   return tipoMap[tipo] || tipo.toUpperCase();

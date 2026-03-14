@@ -89,7 +89,7 @@ function sendToPrinter(data, callback) {
  * Gera comandos ESC/POS para o ticket
  */
 function generateTicketCommands(data) {
-  const { id_senha } = data;
+  const { id_senha, tipo } = data;
 
   // Comandos ESC/POS
   const ESC = '\x1B';
@@ -125,6 +125,9 @@ function generateTicketCommands(data) {
   commands += SIZE_DOUBLE;
   commands += 'BIOCENTER\n';
   commands += SIZE_NORMAL;
+  if (tipo) {
+    commands += tipo + '\n';
+  }
   commands += '--------------------------------\n';
   commands += '\n';
 
