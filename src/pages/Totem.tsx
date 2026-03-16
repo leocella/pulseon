@@ -195,7 +195,7 @@ export default function Totem() {
             </div>
             <span>Atendimento Normal</span>
             <span className="text-base md:text-lg font-normal opacity-80">
-              Senha iniciada em A
+              Senha iniciada em N
             </span>
           </Button>
 
@@ -223,21 +223,21 @@ export default function Totem() {
             </div>
             <span>Agendado</span>
             <span className="text-base md:text-lg font-normal opacity-80">
-              Senha iniciada em S
+              Senha iniciada em A
             </span>
           </Button>
 
           {/* Retirada de Laudo Button */}
           <Button
-            onClick={() => handleGenerateTicket('Retirada de Laudo')}
+            onClick={() => handleGenerateTicket('Retirada de Resultado')}
             className="h-72 md:h-96 flex flex-col items-center justify-center gap-6 text-2xl md:text-3xl font-bold bg-laudo hover:bg-laudo/90 text-laudo-foreground rounded-3xl shadow-ticket transition-all hover:scale-[1.02] active:scale-[0.98] p-6 text-center"
           >
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 flex items-center justify-center">
               <FileText className="w-8 h-8 md:w-10 md:h-10" />
             </div>
-            <span>Retirada de Laudo</span>
+            <span>Retirada de Resultado</span>
             <span className="text-base md:text-lg font-normal opacity-80">
-              Senha iniciada em L
+              Senha iniciada em R
             </span>
           </Button>
         </div>

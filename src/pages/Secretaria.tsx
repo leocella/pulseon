@@ -127,11 +127,9 @@ function getTypePriority(tipo: string): number {
   switch (tipo) {
     case 'Preferencial': return 1;
     case 'Agendado': return 2;
-    case 'Convênio': return 3;
-    case 'Particular': return 4;
-    case 'Retirada de Laudo': return 5;
-    case 'Normal': return 6;
-    default: return 7;
+    case 'Retirada de Resultado': return 3;
+    case 'Normal': return 4;
+    default: return 5;
   }
 }
 
@@ -611,9 +609,7 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                   <SelectItem value="Preferencial">Preferencial</SelectItem>
                   <SelectItem value="Agendado">Agendado</SelectItem>
                   <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="Convênio">Convênio</SelectItem>
-                  <SelectItem value="Particular">Particular</SelectItem>
-                  <SelectItem value="Retirada de Laudo">Retirada de Laudo</SelectItem>
+                  <SelectItem value="Retirada de Resultado">Retirada de Resultado</SelectItem>
                 </SelectContent>
               </Select>
 

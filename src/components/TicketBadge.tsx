@@ -17,7 +17,7 @@ export function TicketBadge({ tipo, size = 'md' }: TicketBadgeProps) {
   const typeStyles: Record<TipoAtendimento, string> = {
     Normal: 'bg-normal text-normal-foreground',
     Preferencial: 'bg-preferencial text-preferencial-foreground',
-    'Retirada de Laudo': 'bg-laudo text-laudo-foreground',
+    'Retirada de Resultado': 'bg-laudo text-laudo-foreground',
     Agendado: 'bg-agendado text-agendado-foreground',
   };
 

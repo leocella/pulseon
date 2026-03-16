@@ -1,4 +1,4 @@
-export type TipoAtendimento = 'Normal' | 'Preferencial' | 'Retirada de Laudo' | 'Agendado';
+export type TipoAtendimento = 'Normal' | 'Preferencial' | 'Retirada de Resultado' | 'Agendado';
 
 export type StatusAtendimento =
   | 'aguardando'

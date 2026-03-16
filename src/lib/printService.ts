@@ -19,7 +19,7 @@ function getTipoDisplay(tipo: string): string {
     'Normal': 'NORMAL',
     'Preferencial': 'PREFERENCIAL',
     'Agendado': 'AGENDADO',
-    'Retirada de Laudo': 'RETIRADA DE LAUDO',
+    'Retirada de Resultado': 'RETIRADA DE RESULTADO',
   };
   
   // Tenta encontrar match exato ou case-insensitive
