@@ -14,22 +14,29 @@ function stripDiacritics(input: string): string {
 
 // Mapeia tipo para prefixo legível
 function getTipoDisplay(tipo: string): string {
+  const t = String(tipo || '').trim();
   const tipoMap: Record<string, string> = {
     'Normal': 'NORMAL',
     'Preferencial': 'PREFERENCIAL',
     'Agendado': 'AGENDADO',
     'Retirada de Laudo': 'RETIRADA DE LAUDO',
   };
-  return tipoMap[tipo] || tipo.toUpperCase();
+  
+  // Tenta encontrar match exato ou case-insensitive
+  if (tipoMap[t]) return tipoMap[t];
+  
+  const entry = Object.entries(tipoMap).find(([k]) => k.toLowerCase() === t.toLowerCase());
+  return entry ? entry[1] : t.toUpperCase();
 }
 
-export async function printTicket(payload: PrintPayload, retries = 1): Promise<boolean> {
+export async function printTicket(payload: PrintPayload, retries = 2): Promise<boolean> {
   const now = new Date();
   const baseUrl = getPrintServerBaseUrl();
   const printUrl = `${baseUrl}/print`;
 
   // Garante que o número da senha nunca seja undefined/null
   const ticketNumber = payload?.id_senha || (payload as any)?.senha || 'ERRO';
+  const tipoDisplay = getTipoDisplay(payload.tipo);
 
   if (ticketNumber === 'ERRO' || !ticketNumber) {
     console.error('[PrintService] ERRO: id_senha está undefined!', payload);
@@ -38,23 +45,22 @@ export async function printTicket(payload: PrintPayload, retries = 1): Promise<b
 
   const printData = {
     id_senha: ticketNumber,
-    // Retrocompatibilidade: alguns print-servers antigos usam `senha`
+    // Retrocompatibilidade
     senha: ticketNumber,
-    tipo: getTipoDisplay(payload.tipo),
-    unidade: stripDiacritics(payload.unidade),
+    tipo: tipoDisplay,
+    unidade: stripDiacritics(payload.unidade || ''),
     hora: format(now, 'HH:mm'),
     data: format(now, 'dd/MM/yyyy', { locale: ptBR }),
     client: 'totem-web',
   };
 
-  console.log('[PrintService] URL do servidor:', printUrl);
-  console.log('[PrintService] Enviando para impressora:', JSON.stringify(printData));
+  console.log(`[PrintService] Enviando ${ticketNumber} (${tipoDisplay}) para ${printUrl}`);
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
-      // Timeout reduzido para 2s para não bloquear a UI
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      // Aumentado para 4s para evitar aborts falsos em redes instáveis
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
 
       const response = await fetch(printUrl, {
         method: 'POST',
@@ -67,24 +73,16 @@ export async function printTicket(payload: PrintPayload, retries = 1): Promise<b
 
       clearTimeout(timeoutId);
 
-      // Verificar tipo de resposta antes de parsear
-      const contentType = response.headers.get('content-type') || '';
-
       if (response.ok) {
-        if (contentType.includes('application/json')) {
-          const result = await response.json();
-          console.log('[PrintService] Impressão bem-sucedida:', result);
-        } else {
-          console.log('[PrintService] Impressão OK (resposta não-JSON)');
-        }
+        console.log(`[PrintService] Impressão ${ticketNumber} OK`);
         return true;
       } else {
         const errorText = await response.text();
-        console.warn(`[PrintService] Tentativa ${attempt + 1} falhou: HTTP ${response.status}`, errorText.substring(0, 200));
+        console.warn(`[PrintService] Tentativa ${attempt + 1}/${retries + 1} falhou: HTTP ${response.status}`, errorText.substring(0, 100));
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`[PrintService] Tentativa ${attempt + 1}: timeout`);
+        console.warn(`[PrintService] Tentativa ${attempt + 1}: timeout (4s)`);
       } else {
         console.error(`[PrintService] Tentativa ${attempt + 1} erro:`, error);
       }
@@ -93,8 +91,7 @@ export async function printTicket(payload: PrintPayload, retries = 1): Promise<b
         return false;
       }
 
-      // Aguardar antes de tentar novamente (reduzido)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
