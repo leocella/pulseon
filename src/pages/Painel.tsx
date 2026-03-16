@@ -6,6 +6,7 @@ import { useCurrentTicket, useRecentlyCalledTickets } from '@/hooks/useQueue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePanelMedia } from '@/hooks/usePanelMedia';
 import { useAlertSound } from '@/hooks/useAlertSound';
+import { useSpeech } from '@/hooks/useSpeech';
 
 import { TicketNumber } from '@/components/TicketNumber';
 import { TicketBadge } from '@/components/TicketBadge';
@@ -18,7 +19,6 @@ import type { MediaItem } from '@/components/MediaCarousel';
 
 export default function Painel() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const lastCalledTicketRef = useRef<{ id: string, hora_chamada: string | null } | null>(null);
@@ -28,6 +28,7 @@ export default function Painel() {
   const { data: recentTickets = [], isLoading: loadingRecent } = useRecentlyCalledTickets(6);
   const { data: dbMediaItems = [] } = usePanelMedia();
   const { playAlertSound, initAudioContext } = useAlertSound();
+  const { speakTicket } = useSpeech();
 
   // Enable realtime updates
   useRealtimeQueue();
@@ -75,7 +76,7 @@ export default function Painel() {
   }, []);
 
   // Handle user interaction to enable audio
-  const handleEnableSound = useCallback(() => {
+  const handleEnableAudio = useCallback(() => {
     initAudioContext();
     setHasUserInteracted(true);
     // Play a test sound to confirm it works
@@ -123,17 +124,21 @@ export default function Painel() {
     const isSameTimeDifferentTicket = !!lastTime && callTime === lastTime && last?.id !== currentTicket.id;
     const isNewCallEvent = isNewCallTime || isSameTimeDifferentTicket;
 
-    // Update the ref whenever we see a newer call event (even if sound is disabled),
-    // so we don't play sound later for an old call.
+    // Update the ref whenever we see a newer call event
     if (isNewCallEvent) {
       lastCalledTicketRef.current = { id: currentTicket.id, hora_chamada: callTime };
     }
-
-    if (isNewCallEvent && soundEnabled && hasUserInteracted) {
-      console.log('Chamada/rechamada detectada (hora_chamada avançou), tocando som...');
+    
+    if (isNewCallEvent && hasUserInteracted) {
+      console.log('Chamada/rechamada detectada (hora_chamada avançou), tocando som e chamando voz...');
       playAlertSound();
+      
+      // Delay speech slightly after alert sound for better overlap
+      setTimeout(() => {
+        speakTicket(currentTicket.id_senha);
+      }, 1000);
     }
-  }, [currentTicket, soundEnabled, hasUserInteracted, playAlertSound]);
+  }, [currentTicket, hasUserInteracted, playAlertSound, speakTicket]);
 
   // Convert database media items to MediaItem format - memoized to prevent unnecessary re-renders
   const mediaItems: MediaItem[] = useMemo(() => {
@@ -181,31 +186,17 @@ export default function Painel() {
 
         {/* Coluna Direita: Controles, Clima e Relógio */}
         <div className='flex items-center gap-3 sm:gap-5 min-w-[300px] justify-end'>
-          {/* Sound Toggle */}
-          {!hasUserInteracted ? (
+          {/* Audio Activation */}
+          {!hasUserInteracted && (
             <Button
-              onClick={handleEnableSound}
+              onClick={handleEnableAudio}
               variant='secondary'
               size='sm'
               className='flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm'
             >
               <Volume2 className='w-3 h-3 sm:w-4 sm:h-4' />
-              <span className='hidden xs:inline'>Ativar Som</span>
-              <span className='xs:hidden'>Som</span>
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              variant='ghost'
-              size='icon'
-              className='text-white hover:bg-white/20 h-8 w-8 sm:h-10 sm:w-10'
-              title={soundEnabled ? 'Desativar som' : 'Ativar som'}
-            >
-              {soundEnabled ? (
-                <Volume2 className='w-4 h-4 sm:w-5 sm:h-5' />
-              ) : (
-                <VolumeX className='w-4 h-4 sm:w-5 sm:h-5 opacity-50' />
-              )}
+              <span className='hidden xs:inline'>Ativar Áudio do Painel</span>
+              <span className='xs:hidden'>Áudio</span>
             </Button>
           )}
 
