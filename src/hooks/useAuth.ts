@@ -13,6 +13,12 @@ export function useAuth() {
     const [roles, setRoles] = useState<UserRole[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const MASTER_ADMIN_IDS = [
+        '0201a60a-b759-42b3-91c8-2054b05e46b9',
+        'fc92a3e8-d858-49cd-a45a-a6eb55a75a62',
+        '53f3d289-938e-47ca-8705-78e0dc292cf7'
+    ];
+
     useEffect(() => {
         setLoading(true);
 
@@ -93,14 +99,15 @@ export function useAuth() {
         await supabase.auth.signOut();
     };
 
-    const isAdmin = roles.some(r => r.role === 'admin');
-    const isSecretary = roles.some(r => r.role === 'secretary' || r.role === 'admin');
+    const isAdmin = roles.some(r => r.role === 'admin') || (user && MASTER_ADMIN_IDS.includes(user.id));
+    const isSecretary = roles.some(r => r.role === 'secretary' || r.role === 'admin') || (user && MASTER_ADMIN_IDS.includes(user.id));
     
     const getUnidades = () => {
         return roles.map(r => r.unidade).filter(Boolean) as string[];
     };
 
     const hasUnitAccess = (unidade: string) => {
+        if (user && MASTER_ADMIN_IDS.includes(user.id)) return true;
         return roles.some(r => r.unidade === null || r.unidade === unidade);
     };
 
