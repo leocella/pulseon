@@ -62,6 +62,8 @@ export async function printTicket(payload: PrintPayload, retries = 2): Promise<b
       // Aumentado para 4s para evitar aborts falsos em redes instáveis
       const timeoutId = setTimeout(() => controller.abort(), 4000);
 
+      console.log(`[PrintService] Fetch para ${printUrl} com corpo:`, JSON.stringify(printData, null, 2));
+
       const response = await fetch(printUrl, {
         method: 'POST',
         headers: {

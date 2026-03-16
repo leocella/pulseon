@@ -255,26 +255,28 @@ app.post('/print', (req, res) => {
 
   // Verifica se o body foi parseado corretamente
   if (!req.body || Object.keys(req.body).length === 0) {
-    console.error('ERRO: Body vazio ou não parseado!');
+    console.error('ERRO: Body vazio ou não parseado! Verifique Content-Type: application/json');
     return res.status(400).json({
       success: false,
       error: 'Body vazio. Verifique Content-Type: application/json'
     });
   }
 
+  console.log('--- Payload Recebido ---');
+  console.log(JSON.stringify(req.body, null, 2));
+
   // Aceita tanto id_senha quanto senha (retrocompatibilidade)
   const id_senha = req.body.id_senha || req.body.senha;
   const tipo = req.body.tipo;
   const hora = req.body.hora;
-
-  console.log('Dados extraídos:', { id_senha, tipo, hora });
+  const unidade = req.body.unidade;
 
   if (!id_senha || !tipo) {
-    console.error('ERRO: Dados incompletos!', { id_senha, tipo });
+    console.error('ERRO: Dados incompletos para impressão!', { id_senha, tipo });
     return res.status(400).json({
       success: false,
-      error: 'Dados incompletos. Necessário: id_senha (ou senha), tipo',
-      received: { id_senha: req.body.id_senha, senha: req.body.senha, tipo: req.body.tipo }
+      error: 'Dados incompletos. Necessário: id_senha e tipo',
+      received: { id_senha, tipo }
     });
   }
 

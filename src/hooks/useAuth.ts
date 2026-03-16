@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 
+import { MASTER_ADMIN_IDS } from '@/lib/authConfig';
+
 interface UserRole {
     role: 'admin' | 'secretary';
     unidade: string | null;
@@ -12,12 +14,6 @@ export function useAuth() {
     const [user, setUser] = useState<User | null>(null);
     const [roles, setRoles] = useState<UserRole[]>([]);
     const [loading, setLoading] = useState(true);
-
-    const MASTER_ADMIN_IDS = [
-        '0201a60a-b759-42b3-91c8-2054b05e46b9',
-        'fc92a3e8-d858-49cd-a45a-a6eb55a75a62',
-        '53f3d289-938e-47ca-8705-78e0dc292cf7'
-    ];
 
     useEffect(() => {
         setLoading(true);

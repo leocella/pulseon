@@ -3,6 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
 
+import { MASTER_ADMIN_IDS } from '@/lib/authConfig';
+
 interface ProtectedRouteProps {
     children: React.ReactNode;
     requiredRole?: 'admin' | 'secretary';
@@ -26,6 +28,13 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
             if (!nextSession) {
                 setHasAccess(false);
+                setLoading(false);
+                return;
+            }
+
+            // Se for admin total, tem acesso a tudo sempre
+            if (MASTER_ADMIN_IDS.includes(nextSession.user.id)) {
+                setHasAccess(true);
                 setLoading(false);
                 return;
             }
@@ -56,6 +65,13 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
                     return;
                 }
 
+                // Se for admin total, tem acesso a tudo sempre
+                if (MASTER_ADMIN_IDS.includes(existingSession.user.id)) {
+                    setHasAccess(true);
+                    setLoading(false);
+                    return;
+                }
+
                 if (!requiredRole) {
                     setHasAccess(true);
                     setLoading(false);
@@ -74,6 +90,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
     const checkUserRole = async (userId: string, role: 'admin' | 'secretary') => {
         try {
+            // Se for admin total, já deve ter sido pego pelo useEffect acima,
+            // mas mantemos aqui por segurança adicional.
+            if (MASTER_ADMIN_IDS.includes(userId)) {
+                setHasAccess(true);
+                setLoading(false);
+                return;
+            }
+
             const allowedRoles = role === 'admin' ? ['admin'] : ['admin', 'secretary'];
             
             // Ensure we have a valid session before querying
