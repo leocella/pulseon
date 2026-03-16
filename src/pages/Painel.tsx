@@ -28,7 +28,7 @@ export default function Painel() {
   const { data: recentTickets = [], isLoading: loadingRecent } = useRecentlyCalledTickets(6);
   const { data: dbMediaItems = [] } = usePanelMedia();
   const { playAlertSound, initAudioContext } = useAlertSound();
-  const { speakTicket } = useSpeech();
+  const { speakTicket, speak } = useSpeech();
 
   // Enable realtime updates
   useRealtimeQueue();
@@ -77,11 +77,15 @@ export default function Painel() {
 
   // Handle user interaction to enable audio
   const handleEnableAudio = useCallback(() => {
+    console.log('Iniciando áudio por interação do usuário...');
     initAudioContext();
     setHasUserInteracted(true);
-    // Play a test sound to confirm it works
+    // Play a test sound and voice clarify it's active
     playAlertSound();
-  }, [initAudioContext, playAlertSound]);
+    setTimeout(() => {
+      speak('Áudio do painel ativado');
+    }, 1000);
+  }, [initAudioContext, playAlertSound, speak]);
 
   // Toggle fullscreen mode
   const toggleFullscreen = useCallback(async () => {
@@ -130,13 +134,15 @@ export default function Painel() {
     }
     
     if (isNewCallEvent && hasUserInteracted) {
-      console.log('Chamada/rechamada detectada (hora_chamada avançou), tocando som e chamando voz...');
+      console.log('Chamada detectada:', currentTicket.id_senha, 'hora:', callTime);
       playAlertSound();
       
       // Delay speech slightly after alert sound for better overlap
       setTimeout(() => {
         speakTicket(currentTicket.id_senha);
-      }, 1000);
+      }, 1200);
+    } else if (isNewCallEvent && !hasUserInteracted) {
+      console.warn('Senha chamada mas áudio não interagido. Clique no botão de ativar áudio.');
     }
   }, [currentTicket, hasUserInteracted, playAlertSound, speakTicket]);
 
@@ -191,12 +197,11 @@ export default function Painel() {
             <Button
               onClick={handleEnableAudio}
               variant='secondary'
-              size='sm'
-              className='flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm'
+              size='default'
+              className='flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white border-0 font-bold animate-pulse shadow-xl px-6 h-12'
             >
-              <Volume2 className='w-3 h-3 sm:w-4 sm:h-4' />
-              <span className='hidden xs:inline'>Ativar Áudio do Painel</span>
-              <span className='xs:hidden'>Áudio</span>
+              <Volume2 className='w-5 h-5' />
+              <span>CLIQUE PARA ATIVAR O SOM</span>
             </Button>
           )}
 
