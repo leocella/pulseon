@@ -108,7 +108,7 @@ export default function Totem() {
         setGeneratedTicket(null);
       }, 3000);
 
-      // Impressão roda em background (não bloqueia a UI)
+      console.log(`[Totem] Chamando printTicket para ${result.id_senha} (${tipo})`);
       printTicket({
         senha: result.id_senha,
         id_senha: result.id_senha,
@@ -116,21 +116,25 @@ export default function Totem() {
         unidade: UNIDADE,
         hora: new Date().toISOString(),
       }).then(printed => {
-        // Só muda estado se ainda não resetou
+        console.log(`[Totem] Resultado da impressão: ${printed ? 'OK' : 'FALHA'}`);
         if (!printed && !hasReset) {
           setState('print_error');
         }
       }).catch(err => {
-        console.error('Erro na impressão:', err);
+        console.error('[Totem] Erro crítico na função printTicket:', err);
         if (!hasReset) {
           setState('print_error');
         }
       });
 
-    } catch (error) {
-      console.error('Error generating ticket:', error);
+    } catch (error: any) {
+      console.error('[Totem] Erro ao gerar senha:', error);
+      // Log detalhado do erro para o usuário/dev
+      const errorMsg = error.message || 'Erro ao gerar senha';
+      console.error(`[Totem] Detalhes: ${JSON.stringify(error)}`);
+      
       setState('error');
-      setErrorMessage('Erro ao gerar senha. Por favor, tente novamente.');
+      setErrorMessage(`${errorMsg}. Verifique se a migração Agendado foi aplicada no banco.`);
 
       setTimeout(() => {
         setState('idle');
