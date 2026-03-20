@@ -19,8 +19,8 @@ import type { MediaItem } from '@/components/MediaCarousel';
 
 export default function Painel() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(() => localStorage.getItem('panel_audio_enabled') === 'true');
+  const [isFullscreen, setIsFullscreen] = useState(() => localStorage.getItem('panel_fullscreen') === 'true');
   const lastCalledTicketRef = useRef<{ id: string, hora_chamada: string | null } | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -80,6 +80,15 @@ export default function Painel() {
     console.log('Iniciando áudio por interação do usuário...');
     initAudioContext();
     setHasUserInteracted(true);
+    localStorage.setItem('panel_audio_enabled', 'true');
+    
+    // Se o usuário desejava tela cheia persistentemente, tentar ativar agora na interação
+    if (localStorage.getItem('panel_fullscreen') === 'true' && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log('Erro ao tentar restaurar fullscreen:', err);
+      });
+    }
+
     // Play a test sound and voice clarify it's active
     playAlertSound();
     setTimeout(() => {
@@ -93,9 +102,11 @@ export default function Painel() {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
         setIsFullscreen(true);
+        localStorage.setItem('panel_fullscreen', 'true');
       } else {
         await document.exitFullscreen();
         setIsFullscreen(false);
+        localStorage.setItem('panel_fullscreen', 'false');
       }
     } catch (err) {
       console.log('Fullscreen não disponível:', err);
@@ -105,7 +116,9 @@ export default function Painel() {
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const currentlyFull = !!document.fullscreenElement;
+      setIsFullscreen(currentlyFull);
+      localStorage.setItem('panel_fullscreen', currentlyFull.toString());
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
