@@ -33,6 +33,25 @@ export default function Painel() {
   // Enable realtime updates
   useRealtimeQueue();
 
+  // Re-initialize AudioContext after page reload when localStorage says audio was enabled
+  // The AudioContext dies on reload, so we need to recapture it on first user interaction
+  useEffect(() => {
+    if (!hasUserInteracted) return;
+
+    const reinitOnClick = () => {
+      console.log('Re-inicializando AudioContext após reload...');
+      initAudioContext();
+      // Also try to enter fullscreen if it was previously enabled
+      if (localStorage.getItem('panel_fullscreen') === 'true' && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+      document.removeEventListener('click', reinitOnClick);
+    };
+
+    document.addEventListener('click', reinitOnClick, { once: true });
+    return () => document.removeEventListener('click', reinitOnClick);
+  }, []); // Only on mount
+
   // Keep screen awake using Wake Lock API
   useEffect(() => {
     const requestWakeLock = async () => {

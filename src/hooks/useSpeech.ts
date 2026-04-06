@@ -18,6 +18,7 @@ export function useSpeech() {
     utterance.lang = 'pt-BR';
     utterance.rate = 0.9;
     utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
     // Help browser load voices
     const speakWithVoice = () => {

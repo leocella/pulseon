@@ -39,7 +39,7 @@ export function useAlertSound() {
   }, []);
 
   // Play a pleasant two-tone chime
-  const playAlertSound = useCallback(() => {
+  const playAlertSound = useCallback(async () => {
     if (isPlayingRef.current) return;
     
     try {
@@ -47,7 +47,7 @@ export function useAlertSound() {
       
       // Resume if suspended (required by browsers)
       if (audioContext.state === 'suspended') {
-        audioContext.resume();
+        await audioContext.resume();
       }
 
       // Notify that alert is starting
@@ -63,8 +63,8 @@ export function useAlertSound() {
       osc1.type = 'sine';
       osc1.frequency.setValueAtTime(523.25, now); // C5
       gain1.gain.setValueAtTime(0, now);
-      gain1.gain.linearRampToValueAtTime(0.3, now + 0.05);
-      gain1.gain.linearRampToValueAtTime(0.2, now + 0.2);
+      gain1.gain.linearRampToValueAtTime(0.6, now + 0.05);
+      gain1.gain.linearRampToValueAtTime(0.4, now + 0.2);
       gain1.gain.linearRampToValueAtTime(0, now + 0.5);
       osc1.connect(gain1);
       gain1.connect(audioContext.destination);
@@ -77,8 +77,8 @@ export function useAlertSound() {
       osc2.type = 'sine';
       osc2.frequency.setValueAtTime(659.25, now + 0.15); // E5
       gain2.gain.setValueAtTime(0, now + 0.15);
-      gain2.gain.linearRampToValueAtTime(0.3, now + 0.2);
-      gain2.gain.linearRampToValueAtTime(0.2, now + 0.35);
+      gain2.gain.linearRampToValueAtTime(0.6, now + 0.2);
+      gain2.gain.linearRampToValueAtTime(0.4, now + 0.35);
       gain2.gain.linearRampToValueAtTime(0, now + 0.65);
       osc2.connect(gain2);
       gain2.connect(audioContext.destination);
@@ -91,8 +91,8 @@ export function useAlertSound() {
       osc3.type = 'sine';
       osc3.frequency.setValueAtTime(783.99, now + 0.3); // G5
       gain3.gain.setValueAtTime(0, now + 0.3);
-      gain3.gain.linearRampToValueAtTime(0.35, now + 0.35);
-      gain3.gain.linearRampToValueAtTime(0.25, now + 0.5);
+      gain3.gain.linearRampToValueAtTime(0.7, now + 0.35);
+      gain3.gain.linearRampToValueAtTime(0.5, now + 0.5);
       gain3.gain.linearRampToValueAtTime(0, now + 0.9);
       osc3.connect(gain3);
       gain3.connect(audioContext.destination);
