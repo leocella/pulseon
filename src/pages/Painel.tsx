@@ -324,7 +324,7 @@ export default function Painel() {
                       <TicketBadge tipo={displayTicket.tipo} size='md' />
 
                       {displayTicket.atendente && (
-                        <div className='text-sm sm:text-base font-medium text-foreground bg-secondary/50 rounded-full px-4 py-1.5'>
+                        <div className='text-2xl sm:text-4xl font-bold text-primary bg-primary/10 rounded-2xl px-6 py-3 mt-2 shadow-sm border border-primary/20'>
                           {displayTicket.atendente}
                         </div>
                       )}
@@ -381,7 +381,7 @@ export default function Painel() {
                         </span>
                       </div>
                       <TicketBadge tipo={ticket.tipo} size='sm' />
-                      <span className='text-sm sm:text-base font-medium text-foreground truncate flex-1 text-right'>
+                      <span className='text-base sm:text-lg font-bold text-primary truncate flex-1 text-right'>
                         {ticket.atendente || '-'}
                       </span>
                     </div>

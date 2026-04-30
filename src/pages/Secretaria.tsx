@@ -184,8 +184,8 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
   });
 
   // Keys namespaced by user ID to avoid cross-user data leaks
-  const storageKeyAtendente = user?.id ? `atendente_nome_${user.id}` : null;
-  const storageKeyGuiche = user?.id ? `atendente_guiche_${user.id}` : null;
+  const storageKeyAtendente = user?.id ? `atendente_nome_v2_${user.id}` : null;
+  const storageKeyGuiche = user?.id ? `atendente_guiche_v2_${user.id}` : null;
 
   // Restore config from localStorage, or auto-fill from user data
   useEffect(() => {
@@ -199,14 +199,14 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
       setGuiche(savedGuiche || '');
       setConfigMode(false);
     } else if (userDisplayName) {
-      setAtendente(userDisplayName);
+      setGuiche(userDisplayName); // Pre-fill their name in the optional field instead
     } else if (user?.email) {
       const emailName = user.email.split('@')[0];
-      setAtendente(emailName);
+      setGuiche(emailName); // Pre-fill their email name in the optional field instead
     }
 
     setIsInitialized(true);
-  }, [userDisplayName, user?.email, storageKeyAtendente]);
+  }, [userDisplayName, user?.email, storageKeyAtendente, storageKeyGuiche]);
 
   // Enable realtime
   useRealtimeQueue(unidade);
@@ -504,9 +504,9 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome do Atendente *</Label>
+              <Label>Identificação na TV (Guichê / Sala) *</Label>
               <Input
-                placeholder="Ex: Maria Silva"
+                placeholder="Ex: Guichê 01"
                 value={atendente}
                 onChange={(e) => setAtendente(e.target.value)}
                 className="text-lg h-12"
@@ -515,9 +515,9 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Guichê / Sala (opcional)</Label>
+              <Label>Seu Nome (Controle Interno - Opcional)</Label>
               <Input
-                placeholder="Ex: Guichê 01, Sala 102"
+                placeholder="Ex: Maria Silva"
                 value={guiche}
                 onChange={(e) => setGuiche(e.target.value)}
                 className="h-12"
