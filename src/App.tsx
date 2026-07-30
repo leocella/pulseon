@@ -11,6 +11,7 @@ import Secretaria from "./pages/Secretaria";
 import Historico from "./pages/Historico";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
+import Diagnostico from "./pages/Diagnostico";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -81,6 +82,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               <Route path="/login" element={<Login />} />
+              <Route path="/diagnostico" element={<Diagnostico />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
