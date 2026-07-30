@@ -57,7 +57,36 @@ const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
 const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'wmv', 'flv'];
 
+// Containers que o navegador do painel (Chrome) NAO reproduz. Aceitar esses
+// arquivos fazia o upload funcionar e o video falhar so na TV, sem aviso.
+// Caso classico: video de iPhone (.mov + HEVC) - da MEDIA_ERR_SRC_NOT_SUPPORTED.
+const UNPLAYABLE_VIDEO_EXTENSIONS = ['mov', 'avi', 'mkv', 'wmv', 'flv', '3gp'];
+
 const getFileExtension = (file: File) => file.name.split('.').pop()?.toLowerCase() || '';
+
+// Carrega o arquivo localmente e confere se o navegador realmente decodifica.
+// Pega casos que a extensao nao denuncia, como HEVC dentro de .mp4.
+const canBrowserPlay = (file: File): Promise<boolean> =>
+    new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        let done = false;
+        const finish = (ok: boolean) => {
+            if (done) return;
+            done = true;
+            clearTimeout(limite);
+            video.removeAttribute('src');
+            URL.revokeObjectURL(url);
+            resolve(ok);
+        };
+        const limite = setTimeout(() => finish(false), 15000);
+        video.muted = true;
+        video.preload = 'metadata';
+        // loadeddata só dispara se um quadro foi realmente decodificado
+        video.onloadeddata = () => finish(video.videoWidth > 0);
+        video.onerror = () => finish(false);
+        video.src = url;
+    });
 
 const inferFileMediaType = (file: File): 'image' | 'video' | null => {
     if (file.type.startsWith('image/')) return 'image';
@@ -100,7 +129,17 @@ function AdminContent() {
         const detectedType = inferFileMediaType(file);
 
         if (!detectedType) {
-            toast.error('Formato não suportado. Use imagens (JPG/PNG/WEBP) ou vídeos (MP4/WEBM/MOV).');
+            toast.error('Formato não suportado. Use imagens (JPG/PNG/WEBP) ou vídeos MP4.');
+            return false;
+        }
+
+        // Bloqueia containers que a TV nao consegue tocar, antes de subir.
+        const ext = getFileExtension(file);
+        if (detectedType === 'video' && (UNPLAYABLE_VIDEO_EXTENSIONS.includes(ext) || file.type === 'video/quicktime')) {
+            toast.error(
+                `O painel não reproduz arquivos .${ext.toUpperCase()}. Converta o vídeo para MP4 (H.264) antes de enviar.`,
+                { duration: 10000 }
+            );
             return false;
         }
 
@@ -222,6 +261,21 @@ function AdminContent() {
             if (!validateFileSize(file)) {
                 if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
+            }
+
+            // A extensao sozinha nao basta: um .mp4 tambem pode vir em HEVC/H.265,
+            // que o painel nao decodifica. Tenta reproduzir de fato antes de subir.
+            if (detectedType === 'video') {
+                toast.info('Verificando o vídeo...');
+                const playable = await canBrowserPlay(file);
+                if (!playable) {
+                    toast.error(
+                        'Este vídeo não pode ser reproduzido no painel (provavelmente H.265/HEVC). Converta para MP4 com codec H.264 e envie novamente.',
+                        { duration: 12000 }
+                    );
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    return;
+                }
             }
 
             // Compress image if it's an image
@@ -643,7 +697,7 @@ function AdminContent() {
                                             <Input
                                                 ref={fileInputRef}
                                                 type="file"
-                                                accept="image/*,video/*,.mp4,.webm,.mov,.avi,.mkv,.m4v,.jpg,.jpeg,.png,.webp"
+                                                accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,.mp4,.webm,.m4v,.jpg,.jpeg,.png,.webp"
                                                 onChange={handleFileSelect}
                                             />
                                             {selectedFile && (
