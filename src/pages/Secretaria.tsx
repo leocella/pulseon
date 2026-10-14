@@ -607,7 +607,6 @@ function SecretariaPanel({ unidade }: SecretariaPanelProps) {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="Preferencial">Preferencial</SelectItem>
-                  <SelectItem value="Agendado">Agendado</SelectItem>
                   <SelectItem value="Normal">Normal</SelectItem>
                   <SelectItem value="Retirada de Resultado">Retirada de Resultado</SelectItem>
                 </SelectContent>
